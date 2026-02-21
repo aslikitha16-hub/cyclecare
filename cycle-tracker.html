@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CycleWise — Phase Intelligence</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --menstrual: #C0392B;
+    --menstrual-soft: #FADBD8;
+    --follicular: #E67E22;
+    --follicular-soft: #FDEBD0;
+    --ovulation: #27AE60;
+    --ovulation-soft: #D5F5E3;
+    --luteal: #8E44AD;
+    --luteal-soft: #E8DAEF;
+    --bg: #FAF7F4;
+    --text: #2C2C2C;
+    --text-muted: #7A7A7A;
+    --card-bg: #FFFFFF;
+    --radius: 16px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  header {
+    background: #2C2C2C;
+    color: white;
+    padding: 28px 32px 20px;
+  }
+
+  header h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: 2rem;
+    letter-spacing: -0.5px;
+  }
+
+  header p {
+    color: #aaa;
+    font-size: 0.85rem;
+    margin-top: 4px;
+    font-weight: 300;
+  }
+
+  .phase-nav {
+    display: flex;
+    gap: 8px;
+    padding: 20px 32px;
+    background: #2C2C2C;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .phase-nav::-webkit-scrollbar { display: none; }
+
+  .phase-btn {
+    padding: 8px 20px;
+    border: 2px solid transparent;
+    border-radius: 100px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s ease;
+    background: #3a3a3a;
+    color: #ccc;
+  }
+
+  .phase-btn.active, .phase-btn:hover {
+    color: white;
+  }
+
+  .phase-btn[data-phase="menstrual"].active { background: var(--menstrual); border-color: var(--menstrual); }
+  .phase-btn[data-phase="follicular"].active { background: var(--follicular); border-color: var(--follicular); }
+  .phase-btn[data-phase="ovulation"].active { background: var(--ovulation); border-color: var(--ovulation); }
+  .phase-btn[data-phase="luteal"].active { background: var(--luteal); border-color: var(--luteal); }
+
+  .main { padding: 28px 32px; max-width: 960px; }
+
+  .phase-panel { display: none; animation: fadeIn 0.3s ease; }
+  .phase-panel.active { display: block; }
+
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+  .phase-hero {
+    border-radius: var(--radius);
+    padding: 28px;
+    margin-bottom: 24px;
+    border-left: 5px solid;
+  }
+
+  .phase-hero.menstrual { background: var(--menstrual-soft); border-color: var(--menstrual); }
+  .phase-hero.follicular { background: var(--follicular-soft); border-color: var(--follicular); }
+  .phase-hero.ovulation { background: var(--ovulation-soft); border-color: var(--ovulation); }
+  .phase-hero.luteal { background: var(--luteal-soft); border-color: var(--luteal); }
+
+  .phase-hero h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.6rem;
+    margin-bottom: 6px;
+  }
+
+  .phase-hero .days-range {
+    font-size: 0.8rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    opacity: 0.65;
+    margin-bottom: 14px;
+  }
+
+  .phase-hero .summary {
+    font-size: 0.95rem;
+    line-height: 1.6;
+    max-width: 600px;
+  }
+
+  .grid-3 {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  .card {
+    background: var(--card-bg);
+    border-radius: var(--radius);
+    padding: 20px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  }
+
+  .card h3 {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-weight: 500;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+  }
+
+  .bar-label { font-size: 0.82rem; margin-bottom: 5px; font-weight: 500; }
+  .bar-track {
+    height: 8px;
+    background: #eee;
+    border-radius: 99px;
+    overflow: hidden;
+    margin-bottom: 14px;
+  }
+  .bar-fill {
+    height: 100%;
+    border-radius: 99px;
+    transition: width 0.6s ease;
+  }
+
+  .mood-tag {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 100px;
+    font-size: 0.78rem;
+    font-weight: 500;
+    margin: 3px 2px;
+  }
+
+  .priority-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 0;
+    border-bottom: 1px solid #f0f0f0;
+    font-size: 0.88rem;
+  }
+  .priority-item:last-child { border-bottom: none; }
+  .priority-icon { font-size: 1.1rem; }
+
+  .travel-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    border-radius: 100px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    margin-bottom: 12px;
+  }
+
+  .travel-tips li {
+    font-size: 0.85rem;
+    line-height: 1.5;
+    margin-bottom: 6px;
+    padding-left: 4px;
+    list-style: none;
+  }
+  .travel-tips li::before { content: "→ "; color: var(--text-muted); }
+
+  /* Day-by-day */
+  .day-tabs {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+  .day-tab {
+    padding: 6px 16px;
+    border-radius: 100px;
+    border: 1.5px solid #ddd;
+    background: white;
+    font-size: 0.82rem;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 500;
+    transition: all 0.15s;
+  }
+  .day-tab.active {
+    background: #2C2C2C;
+    color: white;
+    border-color: #2C2C2C;
+  }
+
+  .day-content { display: none; }
+  .day-content.active { display: block; animation: fadeIn 0.2s ease; }
+
+  .day-tip-card {
+    background: #F8F8F8;
+    border-radius: 12px;
+    padding: 16px 18px;
+  }
+  .day-tip-card h4 { font-size: 0.9rem; font-weight: 600; margin-bottom: 8px; }
+  .day-tip-card p { font-size: 0.85rem; line-height: 1.6; color: #444; }
+  .day-tip-card ul { padding-left: 16px; margin-top: 8px; }
+  .day-tip-card ul li { font-size: 0.84rem; line-height: 1.6; color: #444; margin-bottom: 4px; }
+
+  .section-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.1rem;
+    margin-bottom: 14px;
+    margin-top: 4px;
+  }
+
+  @media (max-width: 600px) {
+    header, .phase-nav, .main { padding-left: 16px; padding-right: 16px; }
+    .grid-3 { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>CycleWise</h1>
+  <p>Phase-Based Intelligence — Section 1</p>
+</header>
+
+<nav class="phase-nav">
+  <button class="phase-btn active" data-phase="menstrual">🔴 Menstrual</button>
+  <button class="phase-btn" data-phase="follicular">🟠 Follicular</button>
+  <button class="phase-btn" data-phase="ovulation">🟢 Ovulation</button>
+  <button class="phase-btn" data-phase="luteal">🟣 Luteal</button>
+</nav>
+
+<div class="main">
+
+  <!-- ===== MENSTRUAL ===== -->
+  <div class="phase-panel active" id="panel-menstrual">
+    <div class="phase-hero menstrual">
+      <div class="days-range">Days 1–5 · Menstrual Phase</div>
+      <h2>Rest. Bleed. Survive.</h2>
+      <p class="summary">Your body is doing heavy work. Energy dips, pain may peak on Days 1–2. This is not the time to push — it's the time to protect your reserves and adapt your environment to your needs.</p>
+    </div>
+
+    <div class="grid-3">
+      <div class="card">
+        <h3>Energy & Mood</h3>
+        <div class="bar-label">Energy Level</div>
+        <div class="bar-track"><div class="bar-fill" style="width:20%; background:var(--menstrual)"></div></div>
+        <div class="bar-label">Pain Risk</div>
+        <div class="bar-track"><div class="bar-fill" style="width:80%; background:#e74c3c"></div></div>
+        <div class="bar-label">Mental Clarity</div>
+        <div class="bar-track"><div class="bar-fill" style="width:30%; background:#aaa"></div></div>
+        <div style="margin-top:14px">
+          <span class="mood-tag" style="background:var(--menstrual-soft);color:var(--menstrual)">Withdrawn</span>
+          <span class="mood-tag" style="background:var(--menstrual-soft);color:var(--menstrual)">Sensitive</span>
+          <span class="mood-tag" style="background:var(--menstrual-soft);color:var(--menstrual)">Inward</span>
+          <span class="mood-tag" style="background:var(--menstrual-soft);color:var(--menstrual)">Irritable</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>What to Prioritize</h3>
+        <div class="priority-item"><span class="priority-icon">🛏️</span><span>Maximize rest — short naps are fine</span></div>
+        <div class="priority-item"><span class="priority-icon">💊</span><span>Take pain relief early — don't wait for it to peak</span></div>
+        <div class="priority-item"><span class="priority-icon">🚫</span><span>Postpone major decisions or confrontations</span></div>
+        <div class="priority-item"><span class="priority-icon">🍵</span><span>Warm food, warm liquids, warm compress</span></div>
+        <div class="priority-item"><span class="priority-icon">📵</span><span>Reduce social obligations — protect your energy</span></div>
+      </div>
+
+      <div class="card">
+        <h3>Travel Difficulty</h3>
+        <div class="travel-badge" style="background:var(--menstrual-soft);color:var(--menstrual)">🔴 High Difficulty</div>
+        <ul class="travel-tips">
+          <li>Carry double the supplies you think you need</li>
+          <li>Book aisle seats for bathroom access</li>
+          <li>Map bathrooms at transit points in advance</li>
+          <li>Pack a small heating patch for cramps</li>
+          <li>Avoid long overnight travel on Day 1–2 if possible</li>
+          <li>Wear dark, comfortable, loose clothing</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:24px">
+      <h2 class="section-title">Alternate-Day Guidance</h2>
+      <div class="day-tabs">
+        <button class="day-tab active" data-day="m1">Day 1</button>
+        <button class="day-tab" data-day="m2">Day 2</button>
+        <button class="day-tab" data-day="m3">Day 3</button>
+        <button class="day-tab" data-day="m4">Day 4</button>
+        <button class="day-tab" data-day="m5">Day 5</button>
+      </div>
+      <div class="day-content active" id="m1">
+        <div class="day-tip-card">
+          <h4>Day 1 — The Crash</h4>
+          <p>Flow starts. Cramps may be at their worst. Prostaglandins peak, causing pain and sometimes nausea or loose stools.</p>
+          <ul>
+            <li>Take ibuprofen/mefenamic acid <em>before</em> pain spikes if possible</li>
+            <li>Eat something light before meds — avoid empty stomach</li>
+            <li>Cancel non-essential plans without guilt</li>
+            <li>Low activity only: walking around the house is enough</li>
+          </ul>
+        </div>
+      </div>
+      <div class="day-content" id="m2">
+        <div class="day-tip-card">
+          <h4>Day 2 — Peak Flow</h4>
+          <p>Typically the heaviest flow day. Energy is still low but pain may begin to ease slightly toward evening.</p>
+          <ul>
+            <li>Change products more frequently — don't wait for leaks</li>
+            <li>Iron-rich foods: lentils, spinach, jaggery, red meat if accessible</li>
+            <li>Stay hydrated — bleeding increases fluid loss</li>
+            <li>Light stretching or yoga if tolerable; no intense cardio</li>
+          </ul>
+        </div>
+      </div>
+      <div class="day-content" id="m3">
+        <div class="day-tip-card">
+          <h4>Day 3 — Turning Point</h4>
+          <p>Flow begins to lighten for most. A small energy uptick may appear. The fog lifts slightly.</p>
+          <ul>
+            <li>This is a good day to tackle one small, manageable task</li>
+            <li>Gentle walks outside can help mood</li>
+            <li>Start reintroducing social contact if you want it</li>
+            <li>Reflect or journal — your mind is more receptive now</li>
+          </ul>
+        </div>
+      </div>
+      <div class="day-content" id="m4">
+        <div class="day-tip-card">
+          <h4>Day 4 — Recovery Mode</h4>
+          <p>Light flow or spotting. Energy slowly returning. This is a transition day — don't overcommit yet.</p>
+          <ul>
+            <li>You may feel better — resist the urge to overdo it</li>
+            <li>Plan your next week while in a calmer headspace</li>
+            <li>Light exercise is now well-tolerated</li>
+            <li>Focus on rebuilding nutrition — eat well today</li>
+          </ul>
+        </div>
+      </div>
+      <div class="day-content" id="m5">
+        <div class="day-tip-card">
+          <h4>Day 5 — Emerging</h4>
+          <p>For most, flow ends or nearly ends. Estrogen begins to rise. Energy and motivation start climbing.</p>
+          <ul>
+            <li>Great day to make plans for the upcoming follicular phase</li>
+            <li>Start light workouts — body is ready</li>
+            <li>Social energy is returning — reconnect if you pulled away</li>
+            <li>Mood generally lifts significantly today</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== FOLLICULAR ===== -->
+  <div class="phase-panel" id="panel-follicular">
+    <div class="phase-hero follicular">
+      <div class="days-range">Days 6–13 · Follicular Phase</div>
+      <h2>Rise. Plan. Begin.</h2>
+      <p class="summary">Estrogen climbs steadily. Your energy, optimism, and mental clarity improve day by day. This is your window for starting things — projects, conversations, adventures. Use it intentionally.</p>
+    </div>
+
+    <div class="grid-3">
+      <div class="card">
+        <h3>Energy & Mood</h3>
+        <div class="bar-label">Energy Level</div>
+        <div class="bar-track"><div class="bar-fill" style="width:65%; background:var(--follicular)"></div></div>
+        <div class="bar-label">Pain Risk</div>
+        <div class="bar-track"><div class="bar-fill" style="width:15%; background:#e74c3c"></div></div>
+        <div class="bar-label">Mental Clarity</div>
+        <div class="bar-track"><div class="bar-fill" style="width:75%; background:var(--follicular)"></div></div>
+        <div style="margin-top:14px">
+          <span class="mood-tag" style="background:var(--follicular-soft);color:var(--follicular)">Optimistic</span>
+          <span class="mood-tag" style="background:var(--follicular-soft);color:var(--follicular)">Curious</span>
+          <span class="mood-tag" style="background:var(--follicular-soft);color:var(--follicular)">Motivated</span>
+          <span class="mood-tag" style="background:var(--follicular-soft);color:var(--follicular)">Social</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>What to Prioritize</h3>
+        <div class="priority-item"><span class="priority-icon">📋</span><span>Start new projects — energy supports initiation</span></div>
+        <div class="priority-item"><span class="priority-icon">🤝</span><span>Schedule important meetings or pitches</span></div>
+        <div class="priority-item"><span class="priority-icon">🏃</span><span>Increase workout intensity progressively</span></div>
+        <div class="priority-item"><span class="priority-icon">🧠</span><span>Learn new skills — brain absorbs easily now</span></div>
+        <div class="priority-item"><span class="priority-icon">🌱</span><span>Set goals for the rest of the cycle</span></div>
+      </div>
+
+      <div class="card">
+        <h3>Travel Difficulty</h3>
+        <div class="travel-badge" style="background:var(--follicular-soft);color:var(--follicular)">🟡 Low-Medium</div>
+        <ul class="travel-tips">
+          <li>Good phase for travel — energy is building</li>
+          <li>Try new foods with lower risk of GI upset</li>
+          <li>Spontaneous detours are fine — flexibility is high</li>
+          <li>Pack lighter — you don't need as many comfort items</li>
+          <li>Good time for walking tours or active itineraries</li>
+          <li>Watch iron levels if you bled heavily last phase</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:24px">
+      <h2 class="section-title">Alternate-Day Guidance</h2>
+      <div class="day-tabs">
+        <button class="day-tab active" data-day="f6">Day 6</button>
+        <button class="day-tab" data-day="f8">Day 8</button>
+        <button class="day-tab" data-day="f10">Day 10</button>
+        <button class="day-tab" data-day="f12">Day 12</button>
+      </div>
+      <div class="day-content active" id="f6">
+        <div class="day-tip-card">
+          <h4>Day 6 — Fresh Start</h4>
+          <p>The menstrual phase is behind you. Estrogen is rising and you'll likely notice improved mood and lighter feelings.</p>
+          <ul>
+            <li>Do a gentle reset: tidy space, plan the week</li>
+            <li>Restock your nutrition after period losses</li>
+            <li>Start any creative or professional project you've been putting off</li>
+          </ul>
+        </div>
+      </div>
+      <div class="day-content" id="f8">
+        <div class="day-tip-card">
+          <h4>Day 8 — Building Momentum</h4>
+          <p>Energy is noticeably better. Skin often clears. You may feel more confident and articulate.</p>
+          <ul>
+            <li>Great day for difficult conversations or negotiations</li>
+            <li>Increase workout intensity — body handles it well</li>
+            <li>Good day to reach out to people you've been avoiding</li>
+          </ul>
+        </div>
+      </div>
+      <div class="day-content" id="f10">
+        <div class="day-tip-card">
+          <h4>Day 10 — Peak Follicular</h4>
+          <p>Near-peak estrogen. You likely feel your most focused and socially switched-on.</p>
+          <ul>
+            <li>Book important presentations or interviews for this window</li>
+            <li>Social energy is high — great for group activities</li>
+            <li>Physically, you may hit personal bests in workouts</li>
+          </ul>
+        </div>
+      </div>
+      <div class="day-content" id="f12">
+        <div class="day-tip-card">
+          <h4>Day 12 — Pre-Ovulation</h4>
+          <p>Estrogen at or near its peak. LH surge beginning. You may notice increased libido and confidence.</p>
+          <ul>
+            <li>Capture your best work — write, create, produce</li>
+            <li>If tracking fertility, this window matters</li>
+            <li>Transition mindset: ovulation approaches, pace yourself</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== OVULATION ===== -->
+  <div class="phase-panel" id="panel-ovulation">
+    <div class="phase-hero ovulation">
+      <div class="days-range">Days 14–16 · Ovulation Phase</div>
+      <h2>Peak. Connect. Express.</h2>
+      <p class="summary">A short but powerful window. Energy, communication skills, and confidence peak. Your voice carries more; your presence is stronger. Short-lived — use it deliberately.</p>
+    </div>
+
+    <div class="grid-3">
+      <div class="card">
+        <h3>Energy & Mood</h3>
+        <div class="bar-label">Energy Level</div>
+        <div class="bar-track"><div class="bar-fill" style="width:90%; background:var(--ovulation)"></div></div>
+        <div class="bar-label">Pain Risk</div>
+        <div class="bar-track"><div class="bar-fill" style="width:25%; background:#e74c3c"></div></div>
+        <div class="bar-label">Mental Clarity</div>
+        <div class="bar-track"><div class="bar-fill" style="width:90%; background:var(--ovulation)"></div></div>
+        <div style="margin-top:14px">
+          <span class="mood-tag" style="background:var(--ovulation-soft);color:var(--ovulation)">Confident</span>
+          <span class="mood-tag" style="background:var(--ovulation-soft);color:var(--ovulation)">Expressive</span>
+          <span class="mood-tag" style="background:var(--ovulation-soft);color:var(--ovulation)">Magnetic</span>
+          <span class="mood-tag" style="background:var(--ovulation-soft);color:var(--ovulation)">Warm</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>What to Prioritize</h3>
+        <div class="priority-item"><span class="priority-icon">🎤</span><span>Public speaking, pitches, presentations</span></div>
+        <div class="priority-item"><span class="priority-icon">💬</span><span>Difficult conversations — you're most articulate</span></div>
+        <div class="priority-item"><span class="priority-icon">🎉</span><span>Social events — your energy is contagious</span></div>
+        <div class="priority-item"><span class="priority-icon">💪</span><span>High-intensity workouts — your peak window</span></div>
+        <div class="priority-item"><span class="priority-icon">⚠️</span><span>Note: joints may be looser — warm up properly</span></div>
+      </div>
+
+      <div class="card">
+        <h3>Travel Difficulty</h3>
+        <div class="travel-badge" style="background:var(--ovulation-soft);color:var(--ovulation)">🟢 Low Difficulty</div>
+        <ul class="travel-tips">
+          <li>Best phase for travel — high adaptability</li>
+          <li>Can handle disrupted schedules better</li>
+          <li>Some may notice mild mid-cycle spotting — normal</li>
+          <li>Mild cramping (Mittelschmerz) possible on one side</li>
+          <li>Great phase for adventure or physically active travel</li>
+          <li>Note increased libido when making social travel plans</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:24px">
+      <h2 class="section-title">Alternate-Day Guidance</h2>
+      <div class="day-tabs">
+        <button class="day-tab active" data-day="o14">Day 14</button>
+        <button class="day-tab" data-day="o15">Day 15</button>
+        <button class="day-tab" data-day="o16">Day 16</button>
+      </div>
+      <div class="day-content active" id="o14">
+        <div class="day-tip-card">
+          <h4>Day 14 — Ovulation Day</h4>
+          <p>LH surge triggers egg release. Peak hormonal output. Many people feel "electric" today.</p>
+          <ul>
+            <li>Use this energy for something meaningful — don't waste it on passive scrolling</li>
+            <li>One-on-one conversations tend to go very well today</li>
+            <li>Physically, you're at your strongest — good for strength training</li>
+          </ul>
+        </div>
+      </div>
+      <div class="day-content" id="o15">
+        <div class="day-tip-card">
+          <h4>Day 15 — Post-Peak Glow</h4>
+          <p>Egg has been released. Progesterone begins rising. The glow continues but a subtle shift is coming.</p>
+          <ul>
+            <li>Capture momentum from yesterday — continue important work</li>
+            <li>Begin winding down intense social calendar slightly</li>
+            <li>Good day for creative or collaborative work</li>
+          </ul>
+        </div>
+      </div>
+      <div class="day-content" id="o16">
+        <div class="day-tip-card">
+          <h4>Day 16 — Transition</h4>
+          <p>Progesterone rising more noticeably. Energy may plateau. This is the bridge into the Luteal phase.</p>
+          <ul>
+            <li>Start preparing for a slower pace ahead</li>
+            <li>Good day to organize, systematize, plan ahead</li>
+            <li>Don't over-schedule the coming week — you'll thank yourself</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== LUTEAL ===== -->
+  <div class="phase-panel" id="panel-luteal">
+    <div class="phase-hero luteal">
+      <div class="days-range">Days 17–28 · Luteal Phase</div>
+      <h2>Slow. Complete. Inward.</h2>
+      <p class="summary">Progesterone dominates. Energy gradually declines. Detail-orientation and nesting instincts increase. PMS symptoms may appear in Days 24–28. This phase rewards structure, completion, and self-compassion.</p>
+    </div>
+
+    <div class="grid-3">
+      <div class="card">
+        <h3>Energy & Mood</h3>
+        <div class="bar-label">Energy Level</div>
+        <div class="bar-track"><div class="bar-fill" style="width:45%; background:var(--luteal)"></div></div>
+        <div class="bar-label">PMS Risk (late luteal)</div>
+        <div class="bar-track"><div class="bar-fill" style="width:70%; background:#e74c3c"></div></div>
+        <div class="bar-label">Detail Focus</div>
+        <div class="bar-track"><div class="bar-fill" style="width:80%; background:var(--luteal)"></div></div>
+        <div style="margin-top:14px">
+          <span class="mood-tag" style="background:var(--luteal-soft);color:var(--luteal)">Focused</span>
+          <span class="mood-tag" style="background:var(--luteal-soft);color:var(--luteal)">Methodical</span>
+          <span class="mood-tag" style="background:var(--luteal-soft);color:var(--luteal)">Sensitive</span>
+          <span class="mood-tag" style="background:var(--luteal-soft);color:var(--luteal)">Nesting</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>What to Prioritize</h3>
+        <div class="priority-item"><span class="priority-icon">✅</span><span>Finish tasks — detail work comes naturally</span></div>
+        <div class="priority-item"><span class="priority-icon">🏠</span><span>Home, comfort, routines — lean into nesting</span></div>
+        <div class="priority-item"><span class="priority-icon">📉</span><span>Reduce social commitments in late luteal</span></div>
+        <div class="priority-item"><span class="priority-icon">🥗</span><span>Complex carbs help stabilize mood (oats, rice)</span></div>
+        <div class="priority-item"><span class="priority-icon">🧘</span><span>Prioritize sleep — progesterone makes you drowsy</span></div>
+      </div>
+
+      <div class="card">
+        <h3>Travel Difficulty</h3>
+        <div class="travel-badge" style="background:var(--luteal-soft);color:var(--luteal)">🟠 Medium-High</div>
+        <ul class="travel-tips">
+          <li>Early luteal (Days 17–20): manageable travel</li>
+          <li>Late luteal (Days 24+): minimize travel stress</li>
+          <li>Bloating may affect clothing comfort — dress loosely</li>
+          <li>Bring snacks — hunger spikes and food cravings increase</li>
+          <li>Emotional sensitivity is higher — plan buffer time</li>
+          <li>Sleep disruption hits harder this phase — prioritize rest</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:24px">
+      <h2 class="section-title">Alternate-Day Guidance</h2>
+      <div class="day-tabs">
+        <button class="day-tab active" data-day="l17">Day 17</button>
+        <button class="day-tab" data-day="l19">Day 19</button>
+        <button class="day-tab" data-day="l21">Day 21</button>
+        <button class="day-tab" data-day="l24">Day 24</button>
+        <button class="day-tab" data-day="l27">Day 27</button>
+      </div>
+      <div class="day-content active" id="l17">
+        <div class="day-tip-card">
+          <h4>Day 17 — Early Luteal</h4>
+          <p>Progesterone rising. Energy still decent. Mood may feel slightly calmer and more inward-focused.</p>
+          <ul>
+            <li>Wrap up open loops from the ovulation phase</li>
+            <li>Good for administrative tasks, editing, and reviewing</li>
+            <li>Begin meal prepping if possible — cravings will increase</li>
+          </ul>
+        </div>
+      </div>
+      <div class="day-content" id="l19">
+        <div class="day-tip-card">
+          <h4>Day 19 — Settling In</h4>
+          <p>Progesterone continues rising. You may prefer solitude or smaller groups over large social events.</p>
+          <ul>
+            <li>Good for deep, focused work — fewer distractions tolerated</li>
+            <li>Start scaling back evening commitments</li>
+            <li>Yoga, walking, swimming over high-intensity training</li>
+          </ul>
+        </div>
+      </div>
+      <div class="day-content" id="l21">
+        <div class="day-tip-card">
+          <h4>Day 21 — Mid Luteal</h4>
+          <p>Progesterone peaks. Some may notice breast tenderness, bloating, or increased appetite starting here.</p>
+          <ul>
+            <li>Don't skip meals — blood sugar instability worsens PMS</li>
+            <li>Reduce caffeine and sodium if bloating is an issue</li>
+            <li>Notice emotional patterns — don't react to everything</li>
+          </ul>
+        </div>
+      </div>
+      <div class="day-content" id="l24">
+        <div class="day-tip-card">
+          <h4>Day 24 — PMS Window Begins</h4>
+          <p>Progesterone starts dropping if no pregnancy. For many, this is when PMS symptoms emerge or worsen.</p>
+          <ul>
+            <li>Be extra patient with yourself and others</li>
+            <li>Avoid scheduling high-stakes situations if possible</li>
+            <li>Magnesium, B6, and complex carbs can ease symptoms</li>
+            <li>Track symptoms to understand your patterns over time</li>
+          </ul>
+        </div>
+      </div>
+      <div class="day-content" id="l27">
+        <div class="day-tip-card">
+          <h4>Day 27 — Pre-Menstrual</h4>
+          <p>Final days before menstruation. Hormones drop sharply. Cramping, mood dips, and fatigue often peak now.</p>
+          <ul>
+            <li>Prepare your period supplies now — don't get caught off-guard</li>
+            <li>Rest as much as possible — tomorrow's phase needs your reserves</li>
+            <li>Comfort, warmth, and low-demand activities only</li>
+            <li>It's okay to feel this hard — it's hormonal, not permanent</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /main -->
+
+<script>
+  // Phase switching
+  document.querySelectorAll('.phase-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.phase-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.phase-panel').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('panel-' + btn.dataset.phase).classList.add('active');
+    });
+  });
+
+  // Day tab switching — scoped to each panel
+  document.querySelectorAll('.day-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      const panel = tab.closest('.phase-panel');
+      panel.querySelectorAll('.day-tab').forEach(t => t.classList.remove('active'));
+      panel.querySelectorAll('.day-content').forEach(c => c.classList.remove('active'));
+      tab.classList.add('active');
+      panel.querySelector('#' + tab.dataset.day).classList.add('active');
+    });
+  });
+</script>
+</body>
+</html>

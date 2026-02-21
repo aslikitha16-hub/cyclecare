@@ -1,0 +1,4523 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CycleWise — Cycle Tracker</title>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap"
+    rel="stylesheet">
+  <style>
+    :root {
+      /* ── Phase Palette — Muted, Mature ── */
+      --menstrual: #A84E45;
+      --menstrual-soft: #F5E8E6;
+      --menstrual-mid: #C97A73;
+      --follicular: #5A8260;
+      --follicular-soft: #E3EDE5;
+      --follicular-mid: #7EA285;
+      --ovulation: #A67C2E;
+      --ovulation-soft: #F2E8CA;
+      --ovulation-mid: #C49A52;
+      --luteal: #71548A;
+      --luteal-soft: #EAE0F5;
+      --luteal-mid: #9178AD;
+
+      /* ── Base Palette ── */
+      --bg: #F6F2EC;
+      --bg-paper: #FDFAF6;
+      --bg-warm: #EDE7DE;
+      --card-bg: #FDFAF6;
+      --border: #E4DBD0;
+      --border-soft: #EDE7DE;
+
+      /* ── Text ── */
+      --text: #26201C;
+      --text-secondary: #68574F;
+      --text-muted: #9E9088;
+
+      /* ── Accent ── */
+      --sage: #5A8260;
+      --sage-soft: #E3EDE5;
+      --plum: #71548A;
+      --plum-soft: #EAE0F5;
+      --rose: #A84E45;
+      --rose-soft: #F5E8E6;
+      --gold: #A67C2E;
+      --gold-soft: #F2E8CA;
+
+      /* ── Shell (dark header) ── */
+      --shell: #1C1916;
+      --shell-mid: #282420;
+      --shell-light: #38322E;
+      --shell-text: #D4C9BE;
+
+      /* ── UI Tokens ── */
+      --radius: 20px;
+      --radius-sm: 12px;
+      --radius-xs: 8px;
+      --radius-pill: 100px;
+
+      /* Diffused warm shadows */
+      --shadow-xs: 0 1px 4px rgba(38, 32, 28, .05);
+      --shadow-sm: 0 2px 12px rgba(38, 32, 28, .07);
+      --shadow: 0 4px 24px rgba(38, 32, 28, .09);
+      --shadow-lg: 0 8px 48px rgba(38, 32, 28, .12);
+
+      --ease: cubic-bezier(.4, 0, .2, 1);
+      --ease-spring: cubic-bezier(.175, .885, .32, 1.275);
+      --dur: .28s;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      /* subtle paper grain */
+      background-image:
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+    }
+
+    header {
+      background: var(--shell);
+      color: var(--shell-text);
+      padding: 28px 36px 22px;
+      border-bottom: 1px solid var(--shell-light);
+    }
+
+    header h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.9rem;
+      font-weight: 600;
+      letter-spacing: -0.3px;
+      color: #F0E9E0;
+    }
+
+    header p {
+      color: #7A6E68;
+      font-size: 0.82rem;
+      margin-top: 5px;
+      font-weight: 300;
+      letter-spacing: 0.3px;
+    }
+
+    .phase-nav {
+      display: flex;
+      gap: 8px;
+      padding: 16px 36px;
+      background: var(--shell-mid);
+      overflow-x: auto;
+      scrollbar-width: none;
+      border-bottom: 1px solid var(--shell-light);
+    }
+
+    .phase-nav::-webkit-scrollbar {
+      display: none;
+    }
+
+    .phase-btn {
+      padding: 7px 18px;
+      border: 1.5px solid transparent;
+      border-radius: var(--radius-pill);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.82rem;
+      font-weight: 500;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all var(--dur) var(--ease);
+      background: var(--shell-light);
+      color: #8A7D77;
+      letter-spacing: 0.1px;
+    }
+
+    .phase-btn:hover {
+      color: var(--shell-text);
+      background: #48403C;
+    }
+
+    .phase-btn[data-phase="menstrual"].active {
+      background: var(--menstrual);
+      border-color: var(--menstrual);
+      color: #fff;
+    }
+
+    .phase-btn[data-phase="follicular"].active {
+      background: var(--follicular);
+      border-color: var(--follicular);
+      color: #fff;
+    }
+
+    .phase-btn[data-phase="ovulation"].active {
+      background: var(--ovulation);
+      border-color: var(--ovulation);
+      color: #fff;
+    }
+
+    .phase-btn[data-phase="luteal"].active {
+      background: var(--luteal);
+      border-color: var(--luteal);
+      color: #fff;
+    }
+
+    /* ── Lists ── */
+    .support-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .support-list li {
+      position: relative;
+      padding-left: 18px;
+      margin-bottom: 7px;
+      font-size: 0.83rem;
+      line-height: 1.5;
+      color: var(--text-secondary);
+    }
+
+    .support-list li::before {
+      content: "·";
+      position: absolute;
+      left: 0;
+      color: var(--rose);
+      font-weight: bold;
+      font-size: 1.1rem;
+      line-height: 1.3;
+    }
+
+    .compact-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 16px 18px;
+      transition: all var(--dur) var(--ease);
+    }
+
+    .compact-card:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow);
+    }
+
+    .quick-guide-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 14px;
+      margin-top: 16px;
+    }
+
+    .must-have {
+      background: var(--rose-soft);
+      border-left: 3px solid var(--rose);
+      padding: 10px 12px;
+      margin-top: 12px;
+      font-size: 0.78rem;
+      border-radius: var(--radius-xs);
+      color: var(--rose);
+    }
+
+
+    .main-layout {
+      display: grid;
+      grid-template-columns: 1fr 310px;
+      gap: 28px;
+      max-width: 1340px;
+      margin: 0 auto;
+      padding: 0 32px 48px;
+    }
+
+    .sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      padding-top: 28px;
+    }
+
+    .sidebar-widget {
+      background: var(--bg-paper);
+      border-radius: var(--radius);
+      padding: 22px;
+      box-shadow: var(--shadow-sm);
+      border: 1px solid var(--border);
+      transition: transform var(--dur) var(--ease);
+    }
+
+    .sidebar-widget.pulse {
+      animation: sidebarPulse 0.6s var(--ease);
+    }
+
+    @keyframes sidebarPulse {
+
+      0%,
+      100% {
+        transform: scale(1);
+      }
+
+      45% {
+        transform: scale(1.015);
+      }
+    }
+
+    @keyframes sosPop {
+      from {
+        opacity: 0;
+        transform: scale(0.85);
+      }
+
+      to {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+
+    @keyframes sosPulse {
+
+      0%,
+      100% {
+        transform: scale(1);
+      }
+
+      50% {
+        transform: scale(1.18);
+      }
+    }
+
+    @keyframes breatheGlow {
+
+      0%,
+      100% {
+        box-shadow: 0 0 0 0 rgba(168, 78, 69, .15);
+      }
+
+      50% {
+        box-shadow: 0 0 0 8px rgba(168, 78, 69, 0);
+      }
+    }
+
+    .sidebar-widget h3 {
+      font-size: 0.64rem;
+      text-transform: uppercase;
+      letter-spacing: 1.6px;
+      color: var(--text-muted);
+      margin-bottom: 14px;
+      font-weight: 600;
+    }
+
+    .status-pill-big {
+      padding: 12px 14px;
+      border-radius: var(--radius-sm);
+      background: var(--bg-warm);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 10px;
+      border-left: 3px solid var(--rose);
+      transition: all var(--dur) var(--ease);
+    }
+
+    .status-pill-big .icon {
+      font-size: 1.4rem;
+      line-height: 1;
+    }
+
+    .status-pill-big .info h4 {
+      font-size: 0.88rem;
+      font-weight: 600;
+      margin-bottom: 2px;
+      color: var(--text);
+    }
+
+    .status-pill-big .info p {
+      font-size: 0.73rem;
+      color: var(--text-muted);
+    }
+
+    @media (max-width: 1100px) {
+      .main-layout {
+        grid-template-columns: 1fr;
+        padding: 0 20px 40px;
+      }
+
+      .sidebar {
+        display: none;
+      }
+    }
+
+    .main {
+      padding: 28px 0;
+      max-width: 100%;
+    }
+
+    .phase-panel {
+      display: none;
+      animation: fadeIn 0.35s var(--ease);
+    }
+
+    .phase-panel.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(6px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* ── Phase Hero ── */
+    .phase-hero {
+      border-radius: var(--radius);
+      padding: 28px 32px;
+      margin-bottom: 22px;
+      border-left: 4px solid;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .phase-hero::before {
+      content: '';
+      position: absolute;
+      top: -40px;
+      right: -40px;
+      width: 140px;
+      height: 140px;
+      border-radius: 50%;
+      opacity: 0.07;
+      background: currentColor;
+    }
+
+    .phase-hero.menstrual {
+      background: var(--menstrual-soft);
+      border-color: var(--menstrual);
+      color: var(--menstrual);
+    }
+
+    .phase-hero.follicular {
+      background: var(--follicular-soft);
+      border-color: var(--follicular);
+      color: var(--follicular);
+    }
+
+    .phase-hero.ovulation {
+      background: var(--ovulation-soft);
+      border-color: var(--ovulation);
+      color: var(--ovulation);
+    }
+
+    .phase-hero.luteal {
+      background: var(--luteal-soft);
+      border-color: var(--luteal);
+      color: var(--luteal);
+    }
+
+    .phase-hero h2 {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.5rem;
+      font-weight: 600;
+      margin-bottom: 6px;
+      color: var(--text);
+    }
+
+    .phase-hero .days-range {
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1.4px;
+      opacity: 0.7;
+      margin-bottom: 12px;
+    }
+
+    .phase-hero .summary {
+      font-size: 0.92rem;
+      line-height: 1.7;
+      max-width: 600px;
+      color: var(--text-secondary);
+    }
+
+    /* ── Cards ── */
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 14px;
+      margin-bottom: 22px;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      padding: 20px 22px;
+      box-shadow: var(--shadow-sm);
+      border: 1px solid var(--border-soft);
+    }
+
+    .card h3 {
+      font-size: 0.68rem;
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 14px;
+    }
+
+    /* ── Bars ── */
+    .bar-label {
+      font-size: 0.81rem;
+      margin-bottom: 5px;
+      font-weight: 500;
+      color: var(--text-secondary);
+    }
+
+    .bar-track {
+      height: 7px;
+      background: var(--border);
+      border-radius: 99px;
+      overflow: hidden;
+      margin-bottom: 13px;
+    }
+
+    .bar-fill {
+      height: 100%;
+      border-radius: 99px;
+      transition: width 0.7s var(--ease);
+    }
+
+    .mood-tag {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: var(--radius-pill);
+      font-size: 0.76rem;
+      font-weight: 500;
+      margin: 3px 2px;
+    }
+
+    .priority-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border-soft);
+      font-size: 0.86rem;
+      color: var(--text-secondary);
+    }
+
+    .priority-item:last-child {
+      border-bottom: none;
+    }
+
+    .priority-icon {
+      font-size: 1.05rem;
+    }
+
+    .travel-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      border-radius: 100px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      margin-bottom: 12px;
+    }
+
+    .travel-tips li {
+      font-size: 0.85rem;
+      line-height: 1.5;
+      margin-bottom: 6px;
+      padding-left: 4px;
+      list-style: none;
+    }
+
+    .travel-tips li::before {
+      content: "→ ";
+      color: var(--text-muted);
+    }
+
+    /* ── Section Nav ── */
+    .section-nav {
+      display: flex;
+      gap: 0;
+      background: var(--shell);
+      border-bottom: 1px solid var(--shell-light);
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+
+    .section-nav::-webkit-scrollbar {
+      display: none;
+    }
+
+    .section-nav-btn {
+      padding: 13px 22px;
+      background: transparent;
+      border: none;
+      color: #6A6058;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.78rem;
+      font-weight: 500;
+      cursor: pointer;
+      white-space: nowrap;
+      border-bottom: 2px solid transparent;
+      transition: all var(--dur) var(--ease);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+    }
+
+    .section-nav-btn.active,
+    .section-nav-btn:hover {
+      color: var(--shell-text);
+      border-bottom-color: var(--rose);
+    }
+
+    .section-page {
+      display: none;
+    }
+
+    .section-page.active {
+      display: block;
+    }
+
+    /* ── Day Tabs ── */
+    .day-tabs {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+    }
+
+    .day-tab {
+      padding: 6px 15px;
+      border-radius: var(--radius-pill);
+      border: 1.5px solid var(--border);
+      background: var(--bg-paper);
+      font-size: 0.8rem;
+      cursor: pointer;
+      font-family: 'DM Sans', sans-serif;
+      font-weight: 500;
+      transition: all var(--dur) var(--ease);
+      color: var(--text-secondary);
+    }
+
+    .day-tab.active {
+      background: var(--shell);
+      color: var(--shell-text);
+      border-color: var(--shell);
+    }
+
+    .day-content {
+      display: none;
+    }
+
+    .day-content.active {
+      display: block;
+      animation: fadeIn 0.2s var(--ease);
+    }
+
+    .day-tip-card {
+      background: var(--bg-warm);
+      border-radius: var(--radius-sm);
+      padding: 16px 18px;
+      border: 1px solid var(--border);
+    }
+
+    .day-tip-card h4 {
+      font-size: 0.88rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: var(--text);
+    }
+
+    .day-tip-card p {
+      font-size: 0.84rem;
+      line-height: 1.65;
+      color: var(--text-secondary);
+    }
+
+    .day-tip-card ul {
+      padding-left: 16px;
+      margin-top: 8px;
+    }
+
+    .day-tip-card ul li {
+      font-size: 0.83rem;
+      line-height: 1.6;
+      color: var(--text-secondary);
+      margin-bottom: 4px;
+    }
+
+    .section-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.05rem;
+      margin-bottom: 14px;
+      margin-top: 4px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    @media (max-width: 600px) {
+
+      header,
+      .phase-nav,
+      .main {
+        padding-left: 16px;
+        padding-right: 16px;
+      }
+
+      .grid-3 {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* ── Section Navigation ── */
+    .section-nav {
+      display: flex;
+      gap: 0;
+      background: #1a1a1a;
+      border-bottom: 1px solid #333;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+
+    .section-nav::-webkit-scrollbar {
+      display: none;
+    }
+
+    .section-nav-btn {
+      padding: 12px 22px;
+      background: transparent;
+      border: none;
+      color: #888;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.82rem;
+      font-weight: 500;
+      cursor: pointer;
+      white-space: nowrap;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .section-nav-btn.active,
+    .section-nav-btn:hover {
+      color: white;
+      border-bottom-color: #fff;
+    }
+
+    .section-page {
+      display: none;
+    }
+
+    .section-page.active {
+      display: block;
+    }
+
+    /* ── Travel Mode Tabs ── */
+    .travel-mode-tabs {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      padding: 20px 32px 0;
+    }
+
+    .tm-btn {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 8px 18px;
+      border-radius: var(--radius-pill);
+      border: 1.5px solid var(--border);
+      background: var(--bg-paper);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.83rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all var(--dur) var(--ease);
+      color: var(--text-secondary);
+    }
+
+    .tm-btn.active {
+      background: var(--shell);
+      color: var(--shell-text);
+      border-color: var(--shell);
+    }
+
+    .tm-btn:hover:not(.active) {
+      background: var(--bg-warm);
+      border-color: var(--border);
+      color: var(--text);
+    }
+
+    .travel-panel {
+      display: none;
+      padding: 24px 32px;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .travel-panel.active {
+      display: block;
+    }
+
+    .travel-hero {
+      border-radius: var(--radius);
+      padding: 24px 28px;
+      margin-bottom: 22px;
+      display: flex;
+      align-items: flex-start;
+      gap: 20px;
+    }
+
+    .travel-hero .icon-big {
+      font-size: 2.6rem;
+      flex-shrink: 0;
+    }
+
+    .travel-hero h2 {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.45rem;
+      margin-bottom: 6px;
+    }
+
+    .travel-hero p {
+      font-size: 0.88rem;
+      line-height: 1.6;
+      opacity: 0.85;
+      max-width: 560px;
+    }
+
+    .tip-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 14px;
+      margin-bottom: 0;
+    }
+
+    .tip-block {
+      background: var(--card-bg);
+      border-radius: 14px;
+      padding: 18px 20px;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+    }
+
+    .tip-block h3 {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .tip-block ul {
+      list-style: none;
+      padding: 0;
+    }
+
+    .tip-block ul li {
+      font-size: 0.84rem;
+      line-height: 1.55;
+      padding: 5px 0;
+      border-bottom: 1px solid #f0f0f0;
+      color: #333;
+    }
+
+    .tip-block ul li:last-child {
+      border-bottom: none;
+    }
+
+    .tip-block ul li::before {
+      content: "· ";
+      color: #bbb;
+      font-weight: bold;
+    }
+
+    .difficulty-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 18px;
+      flex-wrap: wrap;
+    }
+
+    .diff-pill {
+      padding: 5px 14px;
+      border-radius: 100px;
+      font-size: 0.78rem;
+      font-weight: 600;
+    }
+
+    /* ── Tool Tabs & Panels ── */
+    .tools-page {
+      padding: 28px 0;
+      max-width: 100%;
+    }
+
+    .tools-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 26px;
+      flex-wrap: wrap;
+    }
+
+    .tool-tab-btn {
+      padding: 9px 22px;
+      border-radius: var(--radius-pill);
+      border: 1.5px solid var(--border);
+      background: var(--bg-paper);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.83rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all var(--dur) var(--ease);
+      color: var(--text-secondary);
+    }
+
+    .tool-tab-btn:hover {
+      border-color: var(--rose-soft);
+      color: var(--rose);
+    }
+
+    .tool-tab-btn.active {
+      background: var(--shell);
+      color: var(--shell-text);
+      border-color: var(--shell);
+    }
+
+    .tool-panel {
+      display: none;
+      animation: fadeIn 0.3s var(--ease);
+    }
+
+    .tool-panel.active {
+      display: block;
+    }
+
+    /* ── Kit Generator ── */
+    .kit-controls {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 14px;
+      margin-bottom: 22px;
+    }
+
+    .kit-control-card {
+      background: var(--card-bg);
+      border-radius: var(--radius-sm);
+      padding: 18px 20px;
+      box-shadow: var(--shadow-sm);
+      border: 1px solid var(--border);
+    }
+
+    .kit-control-card label {
+      display: block;
+      font-size: 0.68rem;
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+    }
+
+    .kit-control-card select,
+    .kit-control-card input[type=range] {
+      width: 100%;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.84rem;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-xs);
+      padding: 8px 12px;
+      background: var(--bg-warm);
+      color: var(--text);
+      appearance: none;
+      cursor: pointer;
+    }
+
+    .kit-control-card select:focus {
+      outline: none;
+      border-color: var(--rose);
+    }
+
+    .checkbox-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .checkbox-group label {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      font-size: 0.83rem;
+      font-weight: 400;
+      text-transform: none;
+      letter-spacing: 0;
+      color: var(--text-secondary);
+      cursor: pointer;
+    }
+
+    .checkbox-group input[type=checkbox] {
+      width: 15px;
+      height: 15px;
+      accent-color: var(--sage);
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    /* ── Generate Button ── */
+    .generate-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 11px 28px;
+      background: linear-gradient(135deg, var(--shell) 0%, var(--shell-light) 100%);
+      color: var(--shell-text);
+      border: none;
+      border-radius: var(--radius-pill);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all var(--dur) var(--ease);
+      margin-bottom: 22px;
+      box-shadow: var(--shadow-sm);
+      letter-spacing: 0.2px;
+    }
+
+    .generate-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: var(--shadow);
+      filter: brightness(1.1);
+    }
+
+    .generate-btn:active {
+      transform: translateY(0);
+    }
+
+    /* ── Kit Output ── */
+    .kit-output {
+      display: none;
+    }
+
+    .kit-output.visible {
+      display: block;
+      animation: fadeIn 0.3s var(--ease);
+    }
+
+    .kit-category {
+      background: var(--card-bg);
+      border-radius: var(--radius-sm);
+      padding: 18px 22px;
+      margin-bottom: 12px;
+      box-shadow: var(--shadow-sm);
+      border: 1px solid var(--border-soft);
+    }
+
+    .kit-category-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .kit-category-header h3 {
+      font-size: 0.88rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--text);
+    }
+
+    .kit-count {
+      font-size: 0.7rem;
+      background: var(--bg-warm);
+      padding: 3px 10px;
+      border-radius: var(--radius-pill);
+      color: var(--text-muted);
+      font-weight: 600;
+      border: 1px solid var(--border);
+    }
+
+    .kit-items {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 7px;
+    }
+
+    .kit-item {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 8px 12px;
+      background: var(--bg-warm);
+      border-radius: var(--radius-xs);
+      font-size: 0.81rem;
+      color: var(--text-secondary);
+      border: 1px solid var(--border-soft);
+    }
+
+    .kit-item input[type=checkbox] {
+      accent-color: var(--sage);
+      width: 14px;
+      height: 14px;
+      flex-shrink: 0;
+    }
+
+    .kit-item.checked {
+      opacity: 0.4;
+      text-decoration: line-through;
+    }
+
+    .kit-summary-bar {
+      background: var(--shell);
+      color: var(--shell-text);
+      border-radius: var(--radius-sm);
+      padding: 14px 22px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 18px;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .kit-summary-bar .summary-text {
+      font-size: 0.84rem;
+      color: var(--shell-text);
+      opacity: 0.8;
+    }
+
+    .kit-summary-bar .summary-text strong {
+      color: #F0E9E0;
+      opacity: 1;
+    }
+
+    .print-btn {
+      padding: 7px 18px;
+      background: transparent;
+      border: 1.5px solid var(--shell-light);
+      border-radius: var(--radius-pill);
+      color: var(--shell-text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.78rem;
+      cursor: pointer;
+      transition: all var(--dur) var(--ease);
+    }
+
+    .print-btn:hover {
+      border-color: #F0E9E0;
+      color: #F0E9E0;
+    }
+
+
+    /* ── Emergency Mode ── */
+    .emergency-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 14px;
+      margin-bottom: 22px;
+    }
+
+    .emergency-card {
+      border-radius: var(--radius);
+      padding: 22px 24px;
+      border-left: 4px solid;
+    }
+
+    .emergency-card.when {
+      background: var(--gold-soft);
+      border-color: var(--gold);
+    }
+
+    .emergency-card.steps {
+      background: var(--sage-soft);
+      border-color: var(--sage);
+    }
+
+    .emergency-card.warn {
+      background: var(--rose-soft);
+      border-color: var(--rose);
+    }
+
+    .emergency-card h3 {
+      font-family: 'Playfair Display', serif;
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--text);
+    }
+
+    .emergency-card ul {
+      list-style: none;
+      padding: 0;
+    }
+
+    .emergency-card ul li {
+      font-size: 0.83rem;
+      line-height: 1.6;
+      padding: 6px 0;
+      border-bottom: 1px solid rgba(0, 0, 0, .05);
+      color: var(--text-secondary);
+    }
+
+    .emergency-card ul li:last-child {
+      border-bottom: none;
+    }
+
+    .emergency-card ul li::before {
+      content: "→ ";
+      color: var(--text-muted);
+    }
+
+    .steps-numbered {
+      list-style: none;
+      padding: 0;
+      counter-reset: steps;
+    }
+
+    .steps-numbered li {
+      counter-increment: steps;
+      font-size: 0.83rem;
+      line-height: 1.6;
+      padding: 8px 0 8px 36px;
+      border-bottom: 1px solid var(--border-soft);
+      color: var(--text-secondary);
+      position: relative;
+    }
+
+    .steps-numbered li::before {
+      content: counter(steps);
+      position: absolute;
+      left: 0;
+      top: 8px;
+      width: 22px;
+      height: 22px;
+      background: var(--sage);
+      color: white;
+      border-radius: 50%;
+      font-size: 0.68rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
+    }
+
+    .steps-numbered li:last-child {
+      border-bottom: none;
+    }
+
+    .hotline-box {
+      background: var(--shell);
+      color: var(--shell-text);
+      border-radius: var(--radius-sm);
+      padding: 20px 24px;
+      margin-top: 18px;
+      display: flex;
+      gap: 16px;
+      align-items: flex-start;
+    }
+
+    .hotline-box .icon {
+      font-size: 1.6rem;
+      flex-shrink: 0;
+    }
+
+    .hotline-box h4 {
+      font-size: 0.88rem;
+      font-weight: 600;
+      margin-bottom: 6px;
+      color: #F0E9E0;
+    }
+
+    .hotline-box p {
+      font-size: 0.81rem;
+      color: #8A7D77;
+      line-height: 1.55;
+    }
+
+    .hotline-box .numbers {
+      margin-top: 10px;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .hotline-num {
+      padding: 4px 12px;
+      background: var(--shell-light);
+      border-radius: var(--radius-pill);
+      font-size: 0.78rem;
+      color: var(--shell-text);
+      font-weight: 600;
+    }
+
+    /* ── Red Flag ── */
+    .redflag-intro {
+      background: var(--gold-soft);
+      border: 1.5px solid var(--gold);
+      border-radius: var(--radius-sm);
+      padding: 16px 20px;
+      font-size: 0.83rem;
+      line-height: 1.65;
+      color: var(--text-secondary);
+      margin-bottom: 20px;
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+    }
+
+    .redflag-intro .icon {
+      font-size: 1.2rem;
+      flex-shrink: 0;
+    }
+
+    .redflag-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .redflag-card {
+      background: var(--card-bg);
+      border-radius: var(--radius-sm);
+      box-shadow: var(--shadow-sm);
+      overflow: hidden;
+      border: 1px solid var(--border-soft);
+    }
+
+    .redflag-card-top {
+      padding: 14px 18px 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .redflag-card-top h3 {
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .redflag-card ul {
+      list-style: none;
+      padding: 0 18px 14px;
+      margin: 0;
+    }
+
+    .redflag-card ul li {
+      font-size: 0.81rem;
+      line-height: 1.55;
+      padding: 5px 0;
+      border-bottom: 1px solid var(--border-soft);
+      color: var(--text-secondary);
+      display: flex;
+      gap: 8px;
+      align-items: flex-start;
+    }
+
+    .redflag-card ul li:last-child {
+      border-bottom: none;
+    }
+
+    .flag-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      margin-top: 5px;
+    }
+
+    .flag-red .flag-dot {
+      background: var(--menstrual);
+    }
+
+    .flag-orange .flag-dot {
+      background: var(--gold);
+    }
+
+    .flag-blue .flag-dot {
+      background: var(--sage);
+    }
+
+    .flag-purple .flag-dot {
+      background: var(--luteal);
+    }
+
+    .flag-green .flag-dot {
+      background: var(--follicular);
+    }
+
+    .flag-red .redflag-card-top {
+      background: var(--rose-soft);
+    }
+
+    .flag-orange .redflag-card-top {
+      background: var(--gold-soft);
+    }
+
+    .flag-blue .redflag-card-top {
+      background: var(--sage-soft);
+    }
+
+    .flag-purple .redflag-card-top {
+      background: var(--plum-soft);
+    }
+
+    .flag-green .redflag-card-top {
+      background: var(--follicular-soft);
+    }
+
+    .redflag-action {
+      background: var(--shell);
+      color: var(--shell-text);
+      border-radius: var(--radius-sm);
+      padding: 20px 24px;
+      margin-top: 6px;
+    }
+
+    .redflag-action h4 {
+      font-family: 'Playfair Display', serif;
+      font-size: 0.95rem;
+      font-weight: 600;
+      margin-bottom: 12px;
+      color: #F0E9E0;
+    }
+
+    .action-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 10px;
+    }
+
+    .action-chip {
+      background: var(--shell-light);
+      border-radius: var(--radius-xs);
+      padding: 10px 14px;
+      font-size: 0.8rem;
+      line-height: 1.55;
+      color: var(--shell-text);
+      opacity: 0.9;
+    }
+
+    .action-chip strong {
+      color: #F0E9E0;
+      opacity: 1;
+      display: block;
+      margin-bottom: 3px;
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 900px) {
+      .food-layout {
+        grid-template-columns: 1fr;
+      }
+
+      .food-sidebar {
+        display: flex;
+        overflow-x: auto;
+        padding: 10px;
+        gap: 8px;
+        border-bottom: 1px solid var(--shell-light);
+      }
+
+      .food-sidebar-label,
+      .venue-divider {
+        display: none;
+      }
+
+      .food-phase-btn,
+      .food-venue-btn {
+        width: auto;
+        white-space: nowrap;
+        padding: 8px 16px;
+        border-radius: var(--radius-pill);
+        border-left: none !important;
+      }
+    }
+
+    @media (max-width: 768px) {
+      header {
+        padding: 20px 24px;
+      }
+
+      header h1 {
+        font-size: 1.65rem;
+      }
+
+      .main,
+      .tools-page,
+      .hc-page,
+      .travel-panel,
+      .food-main {
+        padding: 16px 20px;
+      }
+
+      .phase-hero {
+        padding: 20px 24px;
+      }
+
+      .phase-hero h2 {
+        font-size: 1.3rem;
+      }
+
+      .grid-3,
+      .tip-grid,
+      .quick-guide-grid,
+      .emergency-grid,
+      .redflag-grid,
+      .food-grid,
+      .hc-card-body,
+      .kit-controls,
+      .kit-items {
+        grid-template-columns: 1fr !important;
+      }
+
+      .section-nav {
+        justify-content: flex-start;
+        padding: 0 10px;
+      }
+
+      .section-nav-btn {
+        padding: 10px 16px;
+        font-size: 0.72rem;
+      }
+    }
+
+    @media (max-width: 480px) {
+      header h1 {
+        font-size: 1.45rem;
+      }
+
+      .section-nav-btn {
+        padding: 8px 12px;
+      }
+
+      .phase-btn {
+        padding: 6px 14px;
+        font-size: 0.75rem;
+      }
+
+      .tm-btn {
+        padding: 7px 14px;
+        font-size: 0.77rem;
+      }
+    }
+
+    /* ── Health Conditions ── */
+    .hc-page {
+      padding: 28px 0;
+      max-width: 100%;
+    }
+
+    .hc-intro {
+      background: var(--shell-mid);
+      color: var(--shell-text);
+      border-radius: var(--radius-sm);
+      padding: 18px 22px;
+      font-size: 0.82rem;
+      line-height: 1.65;
+      margin-bottom: 22px;
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+      border: 1px solid var(--shell-light);
+    }
+
+    .hc-intro .icon {
+      font-size: 1.3rem;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .hc-intro p {
+      margin: 0;
+    }
+
+    .hc-intro strong {
+      color: #F0E9E0;
+    }
+
+    /* ── Condition Toggles ── */
+    .condition-toggles {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 24px;
+    }
+
+    .cond-toggle {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      border-radius: var(--radius-pill);
+      border: 1.5px solid var(--border);
+      background: var(--bg-paper);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.82rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all var(--dur) var(--ease);
+      color: var(--text-secondary);
+      user-select: none;
+    }
+
+    .cond-toggle:hover {
+      border-color: var(--rose);
+      color: var(--rose);
+    }
+
+    .cond-toggle.active {
+      color: white;
+      border-color: transparent;
+    }
+
+    .cond-toggle[data-cond="pcos"].active {
+      background: var(--luteal);
+    }
+
+    .cond-toggle[data-cond="irregular"].active {
+      background: var(--gold);
+    }
+
+    .cond-toggle[data-cond="painful"].active {
+      background: var(--rose);
+    }
+
+    .cond-toggle[data-cond="heavy"].active {
+      background: var(--sage);
+    }
+
+    .cond-toggle[data-cond="anemia"].active {
+      background: var(--follicular);
+    }
+
+    .cond-toggle[data-cond="acne"].active {
+      background: var(--menstrual);
+    }
+
+    .cond-toggle .toggle-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--border);
+      transition: background 0.2s;
+      flex-shrink: 0;
+    }
+
+    .cond-toggle[data-cond="pcos"] .toggle-dot {
+      background: var(--luteal-soft);
+    }
+
+    .cond-toggle[data-cond="irregular"] .toggle-dot {
+      background: var(--gold-soft);
+    }
+
+    .cond-toggle[data-cond="painful"] .toggle-dot {
+      background: var(--rose-soft);
+    }
+
+    .cond-toggle[data-cond="heavy"] .toggle-dot {
+      background: var(--sage-soft);
+    }
+
+    .cond-toggle[data-cond="anemia"] .toggle-dot {
+      background: var(--follicular-soft);
+    }
+
+    .cond-toggle[data-cond="acne"] .toggle-dot {
+      background: var(--menstrual-soft);
+    }
+
+    .cond-toggle.active .toggle-dot {
+      background: rgba(255, 255, 255, 0.4);
+
+      /* ── Condition Cards ── */
+      .hc-cards-area {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+
+      .hc-card {
+        background: var(--card-bg);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow-sm);
+        overflow: hidden;
+        animation: fadeIn 0.3s var(--ease);
+        border: 1px solid var(--border-soft);
+      }
+
+      .hc-card-header {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 18px 24px;
+        border-bottom: 1px solid var(--border-soft);
+      }
+
+      .hc-card-icon {
+        font-size: 1.7rem;
+      }
+
+      .hc-card-header h2 {
+        font-family: 'Playfair Display', serif;
+        font-size: 1.15rem;
+        font-weight: 600;
+        margin-bottom: 3px;
+        color: var(--text);
+      }
+
+      .hc-card-header p {
+        font-size: 0.78rem;
+        color: var(--text-muted);
+        line-height: 1.45;
+      }
+
+      .hc-card-body {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 0;
+      }
+
+      .hc-section {
+        padding: 16px 22px;
+        border-right: 1px solid var(--border-soft);
+        border-bottom: 1px solid var(--border-soft);
+      }
+
+      .hc-section:last-child {
+        border-right: none;
+      }
+
+      .hc-section h4 {
+        font-size: 0.66rem;
+        text-transform: uppercase;
+        letter-spacing: 1.2px;
+        font-weight: 700;
+        margin-bottom: 10px;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+      }
+
+      .hc-section ul {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+      }
+
+      .hc-section ul li {
+        font-size: 0.81rem;
+        line-height: 1.55;
+        padding: 4px 0;
+        border-bottom: 1px solid var(--border-soft);
+        color: var(--text-secondary);
+      }
+
+      .hc-section ul li:last-child {
+        border-bottom: none;
+      }
+
+      .hc-section ul li::before {
+        content: "· ";
+        font-weight: bold;
+        color: var(--border);
+      }
+
+      .hc-section.diet h4 {
+        color: var(--follicular);
+      }
+
+      .hc-section.avoid h4 {
+        color: var(--menstrual);
+      }
+
+      .hc-section.travel h4 {
+        color: var(--sage);
+      }
+
+      .hc-section.energy h4 {
+        color: var(--gold);
+      }
+
+      .hc-section.natural h4 {
+        color: var(--luteal);
+      }
+
+      .hc-empty {
+        text-align: center;
+        padding: 60px 20px;
+        color: var(--text-muted);
+      }
+
+      .hc-empty .empty-icon {
+        font-size: 2.2rem;
+        margin-bottom: 12px;
+      }
+
+      .hc-empty h3 {
+        font-family: 'Playfair Display', serif;
+        font-size: 1.1rem;
+        margin-bottom: 8px;
+        color: var(--text-secondary);
+      }
+
+      .hc-empty p {
+        font-size: 0.83rem;
+        line-height: 1.6;
+        max-width: 340px;
+        margin: 0 auto;
+      }
+
+      .hc-accent-bar {
+        height: 3px;
+        width: 100%;
+      }
+
+      /* ── Food Intelligence ── */
+      .food-layout {
+        display: grid;
+        grid-template-columns: 210px 1fr;
+        min-height: 600px;
+      }
+
+      .food-sidebar {
+        background: var(--shell);
+        padding: 18px 0;
+      }
+
+      .food-phase-btn {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        width: 100%;
+        padding: 11px 20px;
+        background: transparent;
+        border: none;
+        color: #6A6058;
+        font-family: 'DM Sans', sans-serif;
+        font-size: 0.83rem;
+        font-weight: 500;
+        cursor: pointer;
+        text-align: left;
+        border-left: 3px solid transparent;
+        transition: all var(--dur) var(--ease);
+      }
+
+      .food-phase-btn:hover {
+        background: var(--shell-light);
+        color: var(--shell-text);
+      }
+
+      .food-phase-btn.active {
+        color: var(--shell-text);
+        background: var(--shell-light);
+      }
+
+      .food-phase-btn.active[data-fphase="menstrual"] {
+        border-left-color: var(--menstrual);
+      }
+
+      .food-phase-btn.active[data-fphase="follicular"] {
+        border-left-color: var(--follicular);
+      }
+
+      .food-phase-btn.active[data-fphase="ovulation"] {
+        border-left-color: var(--ovulation);
+      }
+
+      .food-phase-btn.active[data-fphase="luteal"] {
+        border-left-color: var(--luteal);
+      }
+
+      .food-sidebar-label {
+        font-size: 0.62rem;
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        color: #4A4440;
+        padding: 16px 20px 8px;
+        font-weight: 600;
+      }
+
+      .food-sidebar .venue-divider {
+        font-size: 0.62rem;
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        color: #4A4440;
+        padding: 18px 20px 8px;
+        font-weight: 600;
+        border-top: 1px solid var(--shell-light);
+        margin-top: 8px;
+      }
+
+      .food-venue-btn {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        width: 100%;
+        padding: 10px 20px;
+        background: transparent;
+        border: none;
+        color: #5A5048;
+        font-family: 'DM Sans', sans-serif;
+        font-size: 0.81rem;
+        cursor: pointer;
+        text-align: left;
+        transition: all var(--dur) var(--ease);
+        border-left: 3px solid transparent;
+      }
+
+      .food-venue-btn:hover {
+        background: var(--shell-light);
+        color: var(--shell-text);
+      }
+
+      .food-venue-btn.active {
+        background: var(--shell-light);
+        color: var(--shell-text);
+        border-left-color: var(--shell-text);
+        opacity: 0.7;
+      }
+
+      .food-main {
+        padding: 28px 32px;
+        overflow-y: auto;
+        background: var(--bg);
+      }
+
+      .food-panel {
+        display: none;
+        animation: fadeIn 0.25s var(--ease);
+      }
+
+      .food-panel.active {
+        display: block;
+      }
+
+      .food-hero-bar {
+        border-radius: var(--radius-sm);
+        padding: 18px 22px;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+      }
+
+      .food-hero-bar h2 {
+        font-family: 'Playfair Display', serif;
+        font-size: 1.25rem;
+        font-weight: 600;
+        margin-bottom: 3px;
+      }
+
+      .food-hero-bar p {
+        font-size: 0.83rem;
+        opacity: 0.8;
+        line-height: 1.55;
+      }
+
+      .food-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        margin-bottom: 14px;
+      }
+
+      .food-card {
+        background: var(--card-bg);
+        border-radius: var(--radius-sm);
+        padding: 16px 18px;
+        box-shadow: var(--shadow-sm);
+        border: 1px solid var(--border-soft);
+      }
+
+      .food-card h3 {
+        font-size: 0.68rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: var(--text-muted);
+        margin-bottom: 10px;
+        font-weight: 600;
+      }
+
+      .food-card ul {
+        list-style: none;
+        padding: 0;
+      }
+
+      .food-card ul li {
+        font-size: 0.82rem;
+        line-height: 1.55;
+        padding: 5px 0;
+        border-bottom: 1px solid var(--border-soft);
+        color: var(--text-secondary);
+      }
+
+      .food-card ul li:last-child {
+        border-bottom: none;
+      }
+
+      .prefer-li::before {
+        content: "✓ ";
+        color: var(--follicular);
+        font-weight: bold;
+      }
+
+      .avoid-li::before {
+        content: "✗ ";
+        color: var(--menstrual);
+        font-weight: bold;
+      }
+
+      .why-li::before {
+        content: "→ ";
+        color: var(--luteal);
+        font-weight: bold;
+      }
+
+      .cheap-li::before {
+        content: "₹ ";
+        color: var(--gold);
+        font-weight: bold;
+      }
+
+      .food-full-card {
+        background: var(--card-bg);
+        border-radius: var(--radius-sm);
+        padding: 18px 22px;
+        box-shadow: var(--shadow-sm);
+        margin-bottom: 12px;
+        border: 1px solid var(--border-soft);
+      }
+
+      .food-full-card h3 {
+        font-size: 0.68rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: var(--text-muted);
+        margin-bottom: 10px;
+        font-weight: 600;
+      }
+
+      .venue-header {
+        font-family: 'Playfair Display', serif;
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin-bottom: 6px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: var(--text);
+      }
+
+      .venue-tag {
+        font-family: 'DM Sans', sans-serif;
+        font-size: 0.7rem;
+        font-weight: 500;
+        padding: 3px 10px;
+        border-radius: var(--radius-pill);
+        background: var(--bg-warm);
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        border: 1px solid var(--border);
+      }
+  </style>
+</head>
+
+<body>
+
+  <header>
+    <h1>CycleWise</h1>
+    <p>Your cycle. Your conditions. Your rules.</p>
+  </header>
+
+  <nav class="section-nav">
+    <button class="section-nav-btn active" data-section="s5">🏠 Home & Tools</button>
+    <button class="section-nav-btn" data-section="s1">🌙 Phase Intelligence</button>
+    <button class="section-nav-btn" data-section="s2">🧳 Travel Adaptation</button>
+    <button class="section-nav-btn" data-section="s3">🍽️ Food Intelligence</button>
+    <button class="section-nav-btn" data-section="s4">⚙️ Health Conditions</button>
+  </nav>
+
+
+  <main class="main-layout">
+    <div class="main-content">
+
+      <!-- SECTION 1 -->
+      <div class="section-page" id="s1">
+        <nav class="phase-nav">
+          <button class="phase-btn active" data-phase="menstrual">🔴 Menstrual</button>
+          <button class="phase-btn" data-phase="follicular">🟠 Follicular</button>
+          <button class="phase-btn" data-phase="ovulation">🟢 Ovulation</button>
+          <button class="phase-btn" data-phase="luteal">🟣 Luteal</button>
+        </nav>
+
+        <div class="main">
+
+          <!-- ===== MENSTRUAL ===== -->
+          <div class="phase-panel active" id="panel-menstrual">
+            <div class="phase-hero menstrual">
+              <div class="days-range">Days 1–5 · Menstrual Phase</div>
+              <h2>Rest. Bleed. Survive.</h2>
+              <p class="summary">Your body is doing heavy work. Energy dips, pain may peak on Days 1–2. This is not the
+                time
+                to push — it's the time to protect your reserves and adapt your environment to your needs.</p>
+            </div>
+
+            <div class="grid-3">
+              <div class="card">
+                <h3>Energy & Mood</h3>
+                <div class="bar-label">Energy Level</div>
+                <div class="bar-track">
+                  <div class="bar-fill" style="width:20%; background:var(--menstrual)"></div>
+                </div>
+                <div class="bar-label">Pain Risk</div>
+                <div class="bar-track">
+                  <div class="bar-fill" style="width:80%; background:#e74c3c"></div>
+                </div>
+                <div class="bar-label">Mental Clarity</div>
+                <div class="bar-track">
+                  <div class="bar-fill" style="width:30%; background:#aaa"></div>
+                </div>
+                <div style="margin-top:14px">
+                  <span class="mood-tag"
+                    style="background:var(--menstrual-soft);color:var(--menstrual)">Withdrawn</span>
+                  <span class="mood-tag"
+                    style="background:var(--menstrual-soft);color:var(--menstrual)">Sensitive</span>
+                  <span class="mood-tag" style="background:var(--menstrual-soft);color:var(--menstrual)">Inward</span>
+                  <span class="mood-tag"
+                    style="background:var(--menstrual-soft);color:var(--menstrual)">Irritable</span>
+                </div>
+              </div>
+
+              <div class="card">
+                <h3>What to Prioritize</h3>
+                <div class="priority-item"><span class="priority-icon">🛏️</span><span>Maximize rest — short naps are
+                    fine</span></div>
+                <div class="priority-item"><span class="priority-icon">💊</span><span>Take pain relief early — don't
+                    wait
+                    for it to peak</span></div>
+                <div class="priority-item"><span class="priority-icon">🚫</span><span>Postpone major decisions or
+                    confrontations</span></div>
+                <div class="priority-item"><span class="priority-icon">🍵</span><span>Warm food, warm liquids, warm
+                    compress</span></div>
+                <div class="priority-item"><span class="priority-icon">📵</span><span>Reduce social obligations —
+                    protect
+                    your energy</span></div>
+              </div>
+
+              <div class="card">
+                <h3>Travel Difficulty</h3>
+                <div class="travel-badge" style="background:var(--menstrual-soft);color:var(--menstrual)">🔴 High
+                  Difficulty
+                </div>
+                <ul class="travel-tips">
+                  <li>Carry double the supplies you think you need</li>
+                  <li>Book aisle seats for bathroom access</li>
+                  <li>Map bathrooms at transit points in advance</li>
+                  <li>Pack a small heating patch for cramps</li>
+                  <li>Avoid long overnight travel on Day 1–2 if possible</li>
+                  <li>Wear dark, comfortable, loose clothing</li>
+                </ul>
+              </div>
+            </div>
+
+            <div class="card" style="margin-bottom:24px">
+              <h2 class="section-title">Alternate-Day Guidance</h2>
+              <div class="day-tabs">
+                <button class="day-tab active" data-day="m1">Day 1</button>
+                <button class="day-tab" data-day="m2">Day 2</button>
+                <button class="day-tab" data-day="m3">Day 3</button>
+                <button class="day-tab" data-day="m4">Day 4</button>
+                <button class="day-tab" data-day="m5">Day 5</button>
+              </div>
+              <div class="day-content active" id="m1">
+                <div class="day-tip-card">
+                  <h4>Day 1 — The Crash</h4>
+                  <p>Flow starts. Cramps may be at their worst. Prostaglandins peak, causing pain and sometimes nausea
+                    or
+                    loose stools.</p>
+                  <ul>
+                    <li>Take ibuprofen/mefenamic acid <em>before</em> pain spikes if possible</li>
+                    <li>Eat something light before meds — avoid empty stomach</li>
+                    <li>Cancel non-essential plans without guilt</li>
+                    <li>Low activity only: walking around the house is enough</li>
+                  </ul>
+                </div>
+              </div>
+              <div class="day-content" id="m2">
+                <div class="day-tip-card">
+                  <h4>Day 2 — Peak Flow</h4>
+                  <p>Typically the heaviest flow day. Energy is still low but pain may begin to ease slightly toward
+                    evening.</p>
+                  <ul>
+                    <li>Change products more frequently — don't wait for leaks</li>
+                    <li>Iron-rich foods: lentils, spinach, jaggery, red meat if accessible</li>
+                    <li>Stay hydrated — bleeding increases fluid loss</li>
+                    <li>Light stretching or yoga if tolerable; no intense cardio</li>
+                  </ul>
+                </div>
+              </div>
+              <div class="day-content" id="m3">
+                <div class="day-tip-card">
+                  <h4>Day 3 — Turning Point</h4>
+                  <p>Flow begins to lighten for most. A small energy uptick may appear. The fog lifts slightly.</p>
+                  <ul>
+                    <li>This is a good day to tackle one small, manageable task</li>
+                    <li>Gentle walks outside can help mood</li>
+                    <li>Start reintroducing social contact if you want it</li>
+                    <li>Reflect or journal — your mind is more receptive now</li>
+                  </ul>
+                </div>
+              </div>
+              <div class="day-content" id="m4">
+                <div class="day-tip-card">
+                  <h4>Day 4 — Recovery Mode</h4>
+                  <p>Light flow or spotting. Energy slowly returning. This is a transition day — don't overcommit yet.
+                  </p>
+                  <ul>
+                    <li>You may feel better — resist the urge to overdo it</li>
+                    <li>Plan your next week while in a calmer headspace</li>
+                    <li>Light exercise is now well-tolerated</li>
+                    <li>Focus on rebuilding nutrition — eat well today</li>
+                  </ul>
+                </div>
+              </div>
+              <div class="day-content" id="m5">
+                <div class="day-tip-card">
+                  <h4>Day 5 — Emerging</h4>
+                  <p>For most, flow ends or nearly ends. Estrogen begins to rise. Energy and motivation start climbing.
+                  </p>
+                  <ul>
+                    <li>Great day to make plans for the upcoming follicular phase</li>
+                    <li>Start light workouts — body is ready</li>
+                    <li>Social energy is returning — reconnect if you pulled away</li>
+                    <li>Mood generally lifts significantly today</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ===== FOLLICULAR ===== -->
+          <div class="phase-panel" id="panel-follicular">
+            <div class="phase-hero follicular">
+              <div class="days-range">Days 6–13 · Follicular Phase</div>
+              <h2>Rise. Plan. Begin.</h2>
+              <p class="summary">Estrogen climbs steadily. Your energy, optimism, and mental clarity improve day by day.
+                This is your window for starting things — projects, conversations, adventures. Use it intentionally.</p>
+            </div>
+
+            <div class="grid-3">
+              <div class="card">
+                <h3>Energy & Mood</h3>
+                <div class="bar-label">Energy Level</div>
+                <div class="bar-track">
+                  <div class="bar-fill" style="width:65%; background:var(--follicular)"></div>
+                </div>
+                <div class="bar-label">Pain Risk</div>
+                <div class="bar-track">
+                  <div class="bar-fill" style="width:15%; background:#e74c3c"></div>
+                </div>
+                <div class="bar-label">Mental Clarity</div>
+                <div class="bar-track">
+                  <div class="bar-fill" style="width:75%; background:var(--follicular)"></div>
+                </div>
+                <div style="margin-top:14px">
+                  <span class="mood-tag"
+                    style="background:var(--follicular-soft);color:var(--follicular)">Optimistic</span>
+                  <span class="mood-tag"
+                    style="background:var(--follicular-soft);color:var(--follicular)">Curious</span>
+                  <span class="mood-tag"
+                    style="background:var(--follicular-soft);color:var(--follicular)">Motivated</span>
+                  <span class="mood-tag" style="background:var(--follicular-soft);color:var(--follicular)">Social</span>
+                </div>
+              </div>
+
+              <div class="card">
+                <h3>What to Prioritize</h3>
+                <div class="priority-item"><span class="priority-icon">📋</span><span>Start new projects — energy
+                    supports
+                    initiation</span></div>
+                <div class="priority-item"><span class="priority-icon">🤝</span><span>Schedule important meetings or
+                    pitches</span></div>
+                <div class="priority-item"><span class="priority-icon">🏃</span><span>Increase workout intensity
+                    progressively</span></div>
+                <div class="priority-item"><span class="priority-icon">🧠</span><span>Learn new skills — brain absorbs
+                    easily now</span></div>
+                <div class="priority-item"><span class="priority-icon">🌱</span><span>Set goals for the rest of the
+                    cycle</span></div>
+              </div>
+
+              <div class="card">
+                <h3>Travel Difficulty</h3>
+                <div class="travel-badge" style="background:var(--follicular-soft);color:var(--follicular)">🟡
+                  Low-Medium
+                </div>
+                <ul class="travel-tips">
+                  <li>Good phase for travel — energy is building</li>
+                  <li>Try new foods with lower risk of GI upset</li>
+                  <li>Spontaneous detours are fine — flexibility is high</li>
+                  <li>Pack lighter — you don't need as many comfort items</li>
+                  <li>Good time for walking tours or active itineraries</li>
+                  <li>Watch iron levels if you bled heavily last phase</li>
+                </ul>
+              </div>
+            </div>
+
+            <div class="card" style="margin-bottom:24px">
+              <h2 class="section-title">Alternate-Day Guidance</h2>
+              <div class="day-tabs">
+                <button class="day-tab active" data-day="f6">Day 6</button>
+                <button class="day-tab" data-day="f8">Day 8</button>
+                <button class="day-tab" data-day="f10">Day 10</button>
+                <button class="day-tab" data-day="f12">Day 12</button>
+              </div>
+              <div class="day-content active" id="f6">
+                <div class="day-tip-card">
+                  <h4>Day 6 — Fresh Start</h4>
+                  <p>The menstrual phase is behind you. Estrogen is rising and you'll likely notice improved mood and
+                    lighter feelings.</p>
+                  <ul>
+                    <li>Do a gentle reset: tidy space, plan the week</li>
+                    <li>Restock your nutrition after period losses</li>
+                    <li>Start any creative or professional project you've been putting off</li>
+                  </ul>
+                </div>
+              </div>
+              <div class="day-content" id="f8">
+                <div class="day-tip-card">
+                  <h4>Day 8 — Building Momentum</h4>
+                  <p>Energy is noticeably better. Skin often clears. You may feel more confident and articulate.</p>
+                  <ul>
+                    <li>Great day for difficult conversations or negotiations</li>
+                    <li>Increase workout intensity — body handles it well</li>
+                    <li>Good day to reach out to people you've been avoiding</li>
+                  </ul>
+                </div>
+              </div>
+              <div class="day-content" id="f10">
+                <div class="day-tip-card">
+                  <h4>Day 10 — Peak Follicular</h4>
+                  <p>Near-peak estrogen. You likely feel your most focused and socially switched-on.</p>
+                  <ul>
+                    <li>Book important presentations or interviews for this window</li>
+                    <li>Social energy is high — great for group activities</li>
+                    <li>Physically, you may hit personal bests in workouts</li>
+                  </ul>
+                </div>
+              </div>
+              <div class="day-content" id="f12">
+                <div class="day-tip-card">
+                  <h4>Day 12 — Pre-Ovulation</h4>
+                  <p>Estrogen at or near its peak. LH surge beginning. You may notice increased libido and confidence.
+                  </p>
+                  <ul>
+                    <li>Capture your best work — write, create, produce</li>
+                    <li>If tracking fertility, this window matters</li>
+                    <li>Transition mindset: ovulation approaches, pace yourself</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ===== OVULATION ===== -->
+          <div class="phase-panel" id="panel-ovulation">
+            <div class="phase-hero ovulation">
+              <div class="days-range">Days 14–16 · Ovulation Phase</div>
+              <h2>Peak. Connect. Express.</h2>
+              <p class="summary">A short but powerful window. Energy, communication skills, and confidence peak. Your
+                voice
+                carries more; your presence is stronger. Short-lived — use it deliberately.</p>
+            </div>
+
+            <div class="grid-3">
+              <div class="card">
+                <h3>Energy & Mood</h3>
+                <div class="bar-label">Energy Level</div>
+                <div class="bar-track">
+                  <div class="bar-fill" style="width:90%; background:var(--ovulation)"></div>
+                </div>
+                <div class="bar-label">Pain Risk</div>
+                <div class="bar-track">
+                  <div class="bar-fill" style="width:25%; background:#e74c3c"></div>
+                </div>
+                <div class="bar-label">Mental Clarity</div>
+                <div class="bar-track">
+                  <div class="bar-fill" style="width:90%; background:var(--ovulation)"></div>
+                </div>
+                <div style="margin-top:14px">
+                  <span class="mood-tag"
+                    style="background:var(--ovulation-soft);color:var(--ovulation)">Confident</span>
+                  <span class="mood-tag"
+                    style="background:var(--ovulation-soft);color:var(--ovulation)">Expressive</span>
+                  <span class="mood-tag" style="background:var(--ovulation-soft);color:var(--ovulation)">Magnetic</span>
+                  <span class="mood-tag" style="background:var(--ovulation-soft);color:var(--ovulation)">Warm</span>
+                </div>
+              </div>
+
+              <div class="card">
+                <h3>What to Prioritize</h3>
+                <div class="priority-item"><span class="priority-icon">🎤</span><span>Public speaking, pitches,
+                    presentations</span></div>
+                <div class="priority-item"><span class="priority-icon">💬</span><span>Difficult conversations — you're
+                    most
+                    articulate</span></div>
+                <div class="priority-item"><span class="priority-icon">🎉</span><span>Social events — your energy is
+                    contagious</span></div>
+                <div class="priority-item"><span class="priority-icon">💪</span><span>High-intensity workouts — your
+                    peak
+                    window</span></div>
+                <div class="priority-item"><span class="priority-icon">⚠️</span><span>Note: joints may be looser — warm
+                    up
+                    properly</span></div>
+              </div>
+
+              <div class="card">
+                <h3>Travel Difficulty</h3>
+                <div class="travel-badge" style="background:var(--ovulation-soft);color:var(--ovulation)">🟢 Low
+                  Difficulty
+                </div>
+                <ul class="travel-tips">
+                  <li>Best phase for travel — high adaptability</li>
+                  <li>Can handle disrupted schedules better</li>
+                  <li>Some may notice mild mid-cycle spotting — normal</li>
+                  <li>Mild cramping (Mittelschmerz) possible on one side</li>
+                  <li>Great phase for adventure or physically active travel</li>
+                  <li>Note increased libido when making social travel plans</li>
+                </ul>
+              </div>
+            </div>
+
+            <div class="card" style="margin-bottom:24px">
+              <h2 class="section-title">Alternate-Day Guidance</h2>
+              <div class="day-tabs">
+                <button class="day-tab active" data-day="o14">Day 14</button>
+                <button class="day-tab" data-day="o15">Day 15</button>
+                <button class="day-tab" data-day="o16">Day 16</button>
+              </div>
+              <div class="day-content active" id="o14">
+                <div class="day-tip-card">
+                  <h4>Day 14 — Ovulation Day</h4>
+                  <p>LH surge triggers egg release. Peak hormonal output. Many people feel "electric" today.</p>
+                  <ul>
+                    <li>Use this energy for something meaningful — don't waste it on passive scrolling</li>
+                    <li>One-on-one conversations tend to go very well today</li>
+                    <li>Physically, you're at your strongest — good for strength training</li>
+                  </ul>
+                </div>
+              </div>
+              <div class="day-content" id="o15">
+                <div class="day-tip-card">
+                  <h4>Day 15 — Post-Peak Glow</h4>
+                  <p>Egg has been released. Progesterone begins rising. The glow continues but a subtle shift is coming.
+                  </p>
+                  <ul>
+                    <li>Capture momentum from yesterday — continue important work</li>
+                    <li>Begin winding down intense social calendar slightly</li>
+                    <li>Good day for creative or collaborative work</li>
+                  </ul>
+                </div>
+              </div>
+              <div class="day-content" id="o16">
+                <div class="day-tip-card">
+                  <h4>Day 16 — Transition</h4>
+                  <p>Progesterone rising more noticeably. Energy may plateau. This is the bridge into the Luteal phase.
+                  </p>
+                  <ul>
+                    <li>Start preparing for a slower pace ahead</li>
+                    <li>Good day to organize, systematize, plan ahead</li>
+                    <li>Don't over-schedule the coming week — you'll thank yourself</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ===== LUTEAL ===== -->
+          <div class="phase-panel" id="panel-luteal">
+            <div class="phase-hero luteal">
+              <div class="days-range">Days 17–28 · Luteal Phase</div>
+              <h2>Slow. Complete. Inward.</h2>
+              <p class="summary">Progesterone dominates. Energy gradually declines. Detail-orientation and nesting
+                instincts
+                increase. PMS symptoms may appear in Days 24–28. This phase rewards structure, completion, and
+                self-compassion.</p>
+            </div>
+
+            <div class="grid-3">
+              <div class="card">
+                <h3>Energy & Mood</h3>
+                <div class="bar-label">Energy Level</div>
+                <div class="bar-track">
+                  <div class="bar-fill" style="width:45%; background:var(--luteal)"></div>
+                </div>
+                <div class="bar-label">PMS Risk (late luteal)</div>
+                <div class="bar-track">
+                  <div class="bar-fill" style="width:70%; background:#e74c3c"></div>
+                </div>
+                <div class="bar-label">Detail Focus</div>
+                <div class="bar-track">
+                  <div class="bar-fill" style="width:80%; background:var(--luteal)"></div>
+                </div>
+                <div style="margin-top:14px">
+                  <span class="mood-tag" style="background:var(--luteal-soft);color:var(--luteal)">Focused</span>
+                  <span class="mood-tag" style="background:var(--luteal-soft);color:var(--luteal)">Methodical</span>
+                  <span class="mood-tag" style="background:var(--luteal-soft);color:var(--luteal)">Sensitive</span>
+                  <span class="mood-tag" style="background:var(--luteal-soft);color:var(--luteal)">Nesting</span>
+                </div>
+              </div>
+
+              <div class="card">
+                <h3>What to Prioritize</h3>
+                <div class="priority-item"><span class="priority-icon">✅</span><span>Finish tasks — detail work comes
+                    naturally</span></div>
+                <div class="priority-item"><span class="priority-icon">🏠</span><span>Home, comfort, routines — lean
+                    into
+                    nesting</span></div>
+                <div class="priority-item"><span class="priority-icon">📉</span><span>Reduce social commitments in late
+                    luteal</span></div>
+                <div class="priority-item"><span class="priority-icon">🥗</span><span>Complex carbs help stabilize mood
+                    (oats, rice)</span></div>
+                <div class="priority-item"><span class="priority-icon">🧘</span><span>Prioritize sleep — progesterone
+                    makes
+                    you drowsy</span></div>
+              </div>
+
+              <div class="card">
+                <h3>Travel Difficulty</h3>
+                <div class="travel-badge" style="background:var(--luteal-soft);color:var(--luteal)">🟠 Medium-High</div>
+                <ul class="travel-tips">
+                  <li>Early luteal (Days 17–20): manageable travel</li>
+                  <li>Late luteal (Days 24+): minimize travel stress</li>
+                  <li>Bloating may affect clothing comfort — dress loosely</li>
+                  <li>Bring snacks — hunger spikes and food cravings increase</li>
+                  <li>Emotional sensitivity is higher — plan buffer time</li>
+                  <li>Sleep disruption hits harder this phase — prioritize rest</li>
+                </ul>
+              </div>
+            </div>
+
+            <div class="card" style="margin-bottom:24px">
+              <h2 class="section-title">Alternate-Day Guidance</h2>
+              <div class="day-tabs">
+                <button class="day-tab active" data-day="l17">Day 17</button>
+                <button class="day-tab" data-day="l19">Day 19</button>
+                <button class="day-tab" data-day="l21">Day 21</button>
+                <button class="day-tab" data-day="l24">Day 24</button>
+                <button class="day-tab" data-day="l27">Day 27</button>
+              </div>
+              <div class="day-content active" id="l17">
+                <div class="day-tip-card">
+                  <h4>Day 17 — Early Luteal</h4>
+                  <p>Progesterone rising. Energy still decent. Mood may feel slightly calmer and more inward-focused.
+                  </p>
+                  <ul>
+                    <li>Wrap up open loops from the ovulation phase</li>
+                    <li>Good for administrative tasks, editing, and reviewing</li>
+                    <li>Begin meal prepping if possible — cravings will increase</li>
+                  </ul>
+                </div>
+              </div>
+              <div class="day-content" id="l19">
+                <div class="day-tip-card">
+                  <h4>Day 19 — Settling In</h4>
+                  <p>Progesterone continues rising. You may prefer solitude or smaller groups over large social events.
+                  </p>
+                  <ul>
+                    <li>Good for deep, focused work — fewer distractions tolerated</li>
+                    <li>Start scaling back evening commitments</li>
+                    <li>Yoga, walking, swimming over high-intensity training</li>
+                  </ul>
+                </div>
+              </div>
+              <div class="day-content" id="l21">
+                <div class="day-tip-card">
+                  <h4>Day 21 — Mid Luteal</h4>
+                  <p>Progesterone peaks. Some may notice breast tenderness, bloating, or increased appetite starting
+                    here.
+                  </p>
+                  <ul>
+                    <li>Don't skip meals — blood sugar instability worsens PMS</li>
+                    <li>Reduce caffeine and sodium if bloating is an issue</li>
+                    <li>Notice emotional patterns — don't react to everything</li>
+                  </ul>
+                </div>
+              </div>
+              <div class="day-content" id="l24">
+                <div class="day-tip-card">
+                  <h4>Day 24 — PMS Window Begins</h4>
+                  <p>Progesterone starts dropping if no pregnancy. For many, this is when PMS symptoms emerge or worsen.
+                  </p>
+                  <ul>
+                    <li>Be extra patient with yourself and others</li>
+                    <li>Avoid scheduling high-stakes situations if possible</li>
+                    <li>Magnesium, B6, and complex carbs can ease symptoms</li>
+                    <li>Track symptoms to understand your patterns over time</li>
+                  </ul>
+                </div>
+              </div>
+              <div class="day-content" id="l27">
+                <div class="day-tip-card">
+                  <h4>Day 27 — Pre-Menstrual</h4>
+                  <p>Final days before menstruation. Hormones drop sharply. Cramping, mood dips, and fatigue often peak
+                    now.
+                  </p>
+                  <ul>
+                    <li>Prepare your period supplies now — don't get caught off-guard</li>
+                    <li>Rest as much as possible — tomorrow's phase needs your reserves</li>
+                    <li>Comfort, warmth, and low-demand activities only</li>
+                    <li>It's okay to feel this hard — it's hormonal, not permanent</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div><!-- /main -->
+      </div><!-- /s1 -->
+
+      <!-- SECTION 2: TRAVEL ADAPTATION -->
+      <div class="section-page" id="s2">
+        <div class="travel-mode-tabs" style="justify-content: center; padding: 20px 0;">
+          <button class="tm-btn active" data-mode="train">🚂 Train</button>
+          <button class="tm-btn" data-mode="bus">🚌 Bus</button>
+          <button class="tm-btn" data-mode="flight">✈️ Flight</button>
+          <button class="tm-btn" data-mode="backpack">🎒 Backpack</button>
+          <button class="tm-btn" data-mode="hostel">🏠 Hostel</button>
+        </div>
+
+        <!-- TRAIN -->
+        <div class="travel-panel active" id="mode-train">
+          <div class="travel-hero" style="background:#EAF4FB; border-left: 5px solid #2980B9; padding: 20px;">
+            <div class="icon-big">🚂</div>
+            <div>
+              <h2>Train Journey Cheat Sheet</h2>
+              <p>Overnight routes and limited bathrooms? Stay ahead of the flow.</p>
+            </div>
+          </div>
+          <div class="quick-guide-grid">
+            <div class="compact-card">
+              <h3>⚡ Quick Tips</h3>
+              <ul class="support-list">
+                <li>Book seat near toilet (check map)</li>
+                <li>Walk aisles hourly to ease cramps</li>
+                <li>Use window seat for easier leaning/sleep</li>
+                <li>Change product BEFORE boarding</li>
+              </ul>
+              <div class="must-have">💡 <strong>Must Have:</strong> Heat patches (hands-free relief)</div>
+            </div>
+            <div class="compact-card">
+              <h3>🛡️ Safety & Comfort</h3>
+              <ul class="support-list">
+                <li>Lower berth = easier bathroom runs</li>
+                <li>Zip-pouch for bathroom supplies</li>
+                <li>Eye mask + noise-cancelling gear</li>
+                <li>accommodation details offline</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <!-- BUS -->
+        <div class="travel-panel" id="mode-bus">
+          <div class="travel-hero" style="background:#FEF9E7; border-left: 5px solid #F1C40F; padding: 20px;">
+            <div class="icon-big">🚌</div>
+            <div>
+              <h2>Bus Travel Cheat Sheet</h2>
+              <p>Bumpy roads and unknown stops? Prep is your best friend.</p>
+            </div>
+          </div>
+          <div class="quick-guide-grid">
+            <div class="compact-card">
+              <h3>⚡ Quick Tips</h3>
+              <ul class="support-list">
+                <li>Go at EVERY stop (no skips!)</li>
+                <li>Sit in middle (less vibration/bumps)</li>
+                <li>Limit liquids 1hr before boarding</li>
+                <li>Double up: Cup + Period Underwear</li>
+              </ul>
+              <div class="must-have">💡 <strong>Must Have:</strong> Ginger chews (nausea + cramps)</div>
+            </div>
+            <div class="compact-card">
+              <h3>🛡️ Safety & Comfort</h3>
+              <ul class="support-list">
+                <li>Hand sanitizer (stops are unsanitary)</li>
+                <li>Neck pillow for zero head support</li>
+                <li>Small change for paid toilets</li>
+                <li>Keep period kit in your tiny lap bag</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <!-- FLIGHT -->
+        <div class="travel-panel" id="mode-flight">
+          <div class="travel-hero" style="background:#EAF4FB; border-left: 5px solid #1ABC9C; padding: 20px;">
+            <div class="icon-big">✈️</div>
+            <div>
+              <h2>Flights & Jet Lag Cheat Sheet</h2>
+              <p>Altitude affects flow. Stay hydrated and track the shift.</p>
+            </div>
+          </div>
+          <div class="quick-guide-grid">
+            <div class="compact-card">
+              <h3>⚡ Quick Tips</h3>
+              <ul class="support-list">
+                <li>Book AISLE seat (bathroom access)</li>
+                <li>Hydrate 2x more than usual</li>
+                <li>Compression socks ( circulation )</li>
+                <li>Walk every 2 hours (DVT risk)</li>
+              </ul>
+              <div class="must-have">💡 <strong>Must Have:</strong> Menstrual Cup (8-12hr protection)</div>
+            </div>
+            <div class="compact-card">
+              <h3>🛡️ Jet Lag Fix</h3>
+              <ul class="support-list">
+                <li>Natural light on arrival immediately</li>
+                <li>No naps > 20 min on Arrival Day</li>
+                <li>Sleep during Destination's night</li>
+                <li>Expect cycle to delay 2-5 days</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <!-- BACKPACK -->
+        <div class="travel-panel" id="mode-backpack">
+          <div class="travel-hero" style="background:#EAFAF1; border-left: 5px solid #27AE60; padding: 20px;">
+            <div class="icon-big">🎒</div>
+            <div>
+              <h2>Backpacking Cheat Sheet</h2>
+              <p>Lean, clean, and ready for anything remote.</p>
+            </div>
+          </div>
+          <div class="quick-guide-grid">
+            <div class="compact-card">
+              <h3>⚡ Quick Tips</h3>
+              <ul class="support-list">
+                <li>Menstrual Disc: Reusable & weightless</li>
+                <li>Bar soap beats heavy liquid soap</li>
+                <li>Plan Tent vs Hostel by cycle flow</li>
+                <li>Track BBT/Symptoms for prediction</li>
+              </ul>
+              <div class="must-have">💡 <strong>Must Have:</strong> Biodegradable wipes</div>
+            </div>
+            <div class="compact-card">
+              <h3>🛡️ Wilderness Info</h3>
+              <ul class="support-list">
+                <li>Learn "Leave No Trace" waste rules</li>
+                <li>Kula Cloth for zero-waste hygiene</li>
+                <li>Pack out everything in sealed bags</li>
+                <li>Sterilize cup with boiling water</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <!-- HOSTEL -->
+        <div class="travel-panel" id="mode-hostel">
+          <div class="travel-hero" style="background:#F4ECF7; border-left: 5px solid #8E44AD; padding: 20px;">
+            <div class="icon-big">🏠</div>
+            <div>
+              <h2>Hostel vs Hotel Cheat Sheet</h2>
+              <p>Privacy vs. Shared space. Choose your battle.</p>
+            </div>
+          </div>
+          <div class="quick-guide-grid">
+            <div class="compact-card">
+              <h3>⚡ Hostel Wins</h3>
+              <ul class="support-list">
+                <li>Book private room for Days 1-2 if possible</li>
+                <li>Use bottom bunk (climbing is hard on Day 1!)</li>
+                <li>Flip-flops ALWAYS for shared showers</li>
+                <li>Keep period kit in locker/padlock</li>
+              </ul>
+              <div class="must-have">💡 <strong>Must Have:</strong> Small torch for night runs</div>
+            </div>
+            <div class="compact-card">
+              <h3>🛡️ Hotel Wins</h3>
+              <ul class="support-list">
+                <li>Private bathroom for cup sanitizing</li>
+                <li>Temp control (AC/Heat) for cramp relief</li>
+                <li>Zero-judgment rest & recovery days</li>
+                <li>Laundry service for emergencies</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+
+      </div><!-- /s2 -->
+
+      <!-- SECTION 3: FOOD INTELLIGENCE -->
+      <div class="section-page" id="s3">
+        <div class="food-layout">
+          <div class="food-sidebar">
+            <div class="food-sidebar-label">By Phase</div>
+            <button class="food-phase-btn active" data-fphase="menstrual">🔴 Menstrual</button>
+            <button class="food-phase-btn" data-fphase="follicular">🟠 Follicular</button>
+            <button class="food-phase-btn" data-fphase="ovulation">🟢 Ovulation</button>
+            <button class="food-phase-btn" data-fphase="luteal">🟣 Luteal</button>
+            <div class="venue-divider">By Venue</div>
+            <button class="food-venue-btn active" data-venue="all">📋 Overview</button>
+            <button class="food-venue-btn" data-venue="railway">🚉 Railway Station</button>
+            <button class="food-venue-btn" data-venue="roadside">🛺 Roadside</button>
+            <button class="food-venue-btn" data-venue="cafe">☕ Cafés</button>
+            <button class="food-venue-btn" data-venue="bakery">🥐 Bakeries</button>
+            <button class="food-venue-btn" data-venue="hostel">🍳 Hostel Kitchen</button>
+          </div>
+          <div class="food-main">
+
+            <!-- MENSTRUAL ALL -->
+            <div class="food-panel active" id="fp-phase-menstrual">
+              <div class="food-hero-bar"
+                style="background:var(--menstrual-soft);border-left:4px solid var(--menstrual)">
+                <div style="font-size:2rem">🔴</div>
+                <div>
+                  <h2>Menstrual Phase — Food Guide</h2>
+                  <p>Iron loss is real. Inflammation is high. Your gut is sensitive. Eat warm, eat dense, eat often.
+                    This is
+                    not the time to eat light.</p>
+                </div>
+              </div>
+              <div class="food-grid">
+                <div class="food-card">
+                  <h3>✓ Prefer</h3>
+                  <ul>
+                    <li class="prefer-li">Lentil soups, dal, rajma — iron + protein</li>
+                    <li class="prefer-li">Jaggery in warm water or milk — iron without nausea</li>
+                    <li class="prefer-li">Bananas — potassium eases cramping muscles</li>
+                    <li class="prefer-li">Rice porridge / khichdi — easy on the gut</li>
+                    <li class="prefer-li">Ginger tea / warm lemon water — anti-inflammatory</li>
+                    <li class="prefer-li">Dark leafy greens (palak, methi) — replenish iron</li>
+                    <li class="prefer-li">Eggs — easily digestible protein</li>
+                    <li class="prefer-li">Oats with banana — slow carbs + magnesium</li>
+                  </ul>
+                </div>
+                <div class="food-card">
+                  <h3>✗ Avoid</h3>
+                  <ul>
+                    <li class="avoid-li">Fried foods — worsen prostaglandin inflammation</li>
+                    <li class="avoid-li">Salty chips / processed snacks — increase bloating</li>
+                    <li class="avoid-li">Caffeine — constricts blood vessels, worsens cramps</li>
+                    <li class="avoid-li">Cold drinks / ice cream — can intensify cramping</li>
+                    <li class="avoid-li">Refined sugar — energy spike then crash</li>
+                    <li class="avoid-li">Alcohol — dehydrates, worsens inflammation</li>
+                  </ul>
+                </div>
+                <div class="food-card">
+                  <h3>→ Why It Helps</h3>
+                  <ul>
+                    <li class="why-li">Iron-rich foods counter blood loss and fatigue</li>
+                    <li class="why-li">Magnesium (bananas, oats) relaxes uterine muscles</li>
+                    <li class="why-li">Warm foods keep the gut relaxed — cold triggers spasms</li>
+                    <li class="why-li">Ginger has proven anti-inflammatory action on period pain</li>
+                    <li class="why-li">Complex carbs sustain energy without blood sugar spikes</li>
+                  </ul>
+                </div>
+                <div class="food-card">
+                  <h3>₹ Cheap Finds</h3>
+                  <ul>
+                    <li class="cheap-li">Dal chawal (₹30–60) — iron, protein, carbs in one</li>
+                    <li class="cheap-li">Boiled egg from any stall (₹10–15)</li>
+                    <li class="cheap-li">Banana bunch (₹20–30 for 6)</li>
+                    <li class="cheap-li">Jaggery block (₹10) — dissolve in tea</li>
+                    <li class="cheap-li">Peanut packet (₹10) — magnesium + healthy fats</li>
+                  </ul>
+                </div>
+              </div>
+              <div
+                style="font-size:0.72rem;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);font-weight:600;margin-bottom:12px;">
+                By Venue — Menstrual</div>
+              <div class="food-full-card">
+                <div class="venue-header">🚉 Railway Station</div>
+                <ul style="list-style:none;padding:0">
+                  <li class="prefer-li" style="font-size:.84rem;padding:5px 0;border-bottom:1px solid #f3f3f3">Idli
+                    sambar,
+                    khichdi, boiled egg</li>
+                  <li class="prefer-li" style="font-size:.84rem;padding:5px 0;border-bottom:1px solid #f3f3f3">Sabudana
+                    khichdi — light and warm</li>
+                  <li class="avoid-li" style="font-size:.84rem;padding:5px 0">Kachori, samosa, oily fried snacks</li>
+                </ul>
+              </div>
+              <div class="food-full-card">
+                <div class="venue-header">🛺 Roadside</div>
+                <ul style="list-style:none;padding:0">
+                  <li class="prefer-li" style="font-size:.84rem;padding:5px 0;border-bottom:1px solid #f3f3f3">Pongal,
+                    upma,
+                    poha — gut-friendly</li>
+                  <li class="prefer-li" style="font-size:.84rem;padding:5px 0;border-bottom:1px solid #f3f3f3">Adrak
+                    chai —
+                    anti-inflammatory</li>
+                  <li class="avoid-li" style="font-size:.84rem;padding:5px 0">Bhajias, pakoras — inflammation triggers
+                  </li>
+                </ul>
+              </div>
+              <div class="food-full-card">
+                <div class="venue-header">☕ Café / 🥐 Bakery</div>
+                <ul style="list-style:none;padding:0">
+                  <li class="prefer-li" style="font-size:.84rem;padding:5px 0;border-bottom:1px solid #f3f3f3">Herbal or
+                    masala tea, oatmeal, egg toast</li>
+                  <li class="prefer-li" style="font-size:.84rem;padding:5px 0;border-bottom:1px solid #f3f3f3">Whole
+                    grain
+                    bread + peanut butter</li>
+                  <li class="avoid-li" style="font-size:.84rem;padding:5px 0">Cold brew, cappuccinos, sugary pastries
+                  </li>
+                </ul>
+              </div>
+              <div class="food-full-card">
+                <div class="venue-header">🍳 Hostel Kitchen</div>
+                <ul style="list-style:none;padding:0">
+                  <li class="prefer-li" style="font-size:.84rem;padding:5px 0;border-bottom:1px solid #f3f3f3">Boil eggs
+                    +
+                    instant oats — 10-min iron + magnesium meal</li>
+                  <li class="prefer-li" style="font-size:.84rem;padding:5px 0;border-bottom:1px solid #f3f3f3">Canned
+                    lentil
+                    soup packet — heat and eat</li>
+                  <li class="cheap-li" style="font-size:.84rem;padding:5px 0">Survival kit: peanut butter jar + jaggery
+                    block + oats</li>
+                </ul>
+              </div>
+            </div>
+
+            <!-- FOLLICULAR ALL -->
+            <div class="food-panel" id="fp-phase-follicular">
+              <div class="food-hero-bar"
+                style="background:var(--follicular-soft);border-left:4px solid var(--follicular)">
+                <div style="font-size:2rem">🟠</div>
+                <div>
+                  <h2>Follicular Phase — Food Guide</h2>
+                  <p>Estrogen rising. Your gut is resilient, metabolism active. Focus on building: protein, fermented
+                    foods,
+                    fresh vegetables. This is your easiest phase to eat well.</p>
+                </div>
+              </div>
+              <div class="food-grid">
+                <div class="food-card">
+                  <h3>✓ Prefer</h3>
+                  <ul>
+                    <li class="prefer-li">Fermented foods — curd, idli, dosa, kanji</li>
+                    <li class="prefer-li">Sprouts and legumes — high plant protein</li>
+                    <li class="prefer-li">Fresh vegetables and salads</li>
+                    <li class="prefer-li">Eggs, paneer, chicken — rebuild after period loss</li>
+                    <li class="prefer-li">Flaxseeds — phytoestrogens support estrogen rise</li>
+                    <li class="prefer-li">Green tea — mild caffeine OK now</li>
+                    <li class="prefer-li">Nuts and seeds — zinc and selenium</li>
+                  </ul>
+                </div>
+                <div class="food-card">
+                  <h3>✗ Avoid</h3>
+                  <ul>
+                    <li class="avoid-li">Excess sugar — disrupts hormonal rise</li>
+                    <li class="avoid-li">Ultra-processed snacks — kill gut flora rebuild</li>
+                    <li class="avoid-li">Skipping meals — your metabolism is high, feed it</li>
+                  </ul>
+                </div>
+                <div class="food-card">
+                  <h3>→ Why It Helps</h3>
+                  <ul>
+                    <li class="why-li">Fermented foods replenish gut bacteria lost during menstruation</li>
+                    <li class="why-li">Zinc supports follicle development and estrogen signaling</li>
+                    <li class="why-li">Flaxseeds bind excess estrogen metabolites</li>
+                    <li class="why-li">Higher protein intake supports muscle gains of this phase</li>
+                  </ul>
+                </div>
+                <div class="food-card">
+                  <h3>₹ Cheap Finds</h3>
+                  <ul>
+                    <li class="cheap-li">Curd / lassi (₹15–30) — cheap probiotic everywhere</li>
+                    <li class="cheap-li">Sprout cup (₹15) — easiest street protein</li>
+                    <li class="cheap-li">Egg bhurji + roti (₹30–50)</li>
+                    <li class="cheap-li">Moong dal chilla from roadside carts</li>
+                    <li class="cheap-li">Mixed nuts packet (₹20–30)</li>
+                  </ul>
+                </div>
+              </div>
+              <div class="food-full-card">
+                <div class="venue-header">All Venues — Follicular Picks</div>
+                <ul style="list-style:none;padding:0">
+                  <li class="prefer-li" style="font-size:.84rem;padding:5px 0;border-bottom:1px solid #f3f3f3">Railway:
+                    Curd
+                    rice, masala chaas, dosa where available</li>
+                  <li class="prefer-li" style="font-size:.84rem;padding:5px 0;border-bottom:1px solid #f3f3f3">Roadside:
+                    Sprout bhel, egg rolls, chana chaat, coconut water</li>
+                  <li class="prefer-li" style="font-size:.84rem;padding:5px 0;border-bottom:1px solid #f3f3f3">Café:
+                    Green
+                    tea, egg sandwich, yogurt parfait</li>
+                  <li class="prefer-li" style="font-size:.84rem;padding:5px 0;border-bottom:1px solid #f3f3f3">Bakery:
+                    Seeded bread, multigrain rolls, nut bars</li>
+                  <li class="prefer-li" style="font-size:.84rem;padding:5px 0;border-bottom:1px solid #f3f3f3">Hostel:
+                    Scrambled eggs + canned beans + veg stir-fry</li>
+                  <li class="cheap-li" style="font-size:.84rem;padding:5px 0">Buy eggs + lentils + curd for the week —
+                    covers the whole phase for ₹150–200</li>
+                </ul>
+              </div>
+            </div>
+
+            <!-- OVULATION ALL -->
+            <div class="food-panel" id="fp-phase-ovulation">
+              <div class="food-hero-bar"
+                style="background:var(--ovulation-soft);border-left:4px solid var(--ovulation)">
+                <div style="font-size:2rem">🟢</div>
+                <div>
+                  <h2>Ovulation Phase — Food Guide</h2>
+                  <p>Peak hormonal output. Antioxidants and anti-inflammatory foods protect this window. Light, fresh,
+                    colorful. Easiest phase for diverse eating.</p>
+                </div>
+              </div>
+              <div class="food-grid">
+                <div class="food-card">
+                  <h3>✓ Prefer</h3>
+                  <ul>
+                    <li class="prefer-li">Raw or lightly cooked vegetables</li>
+                    <li class="prefer-li">Berries, pomegranate, citrus — Vitamin C</li>
+                    <li class="prefer-li">Flaxseeds, sardines — omega-3 protects egg quality</li>
+                    <li class="prefer-li">Fibre-rich foods — metabolize estrogen efficiently</li>
+                    <li class="prefer-li">Watermelon, cucumber — hydration</li>
+                    <li class="prefer-li">Turmeric — anti-inflammatory</li>
+                  </ul>
+                </div>
+                <div class="food-card">
+                  <h3>✗ Avoid</h3>
+                  <ul>
+                    <li class="avoid-li">Excess red meat — estrogen dominance risk</li>
+                    <li class="avoid-li">Refined carbs + sugar — disrupts LH surge</li>
+                    <li class="avoid-li">Alcohol — impairs egg release</li>
+                    <li class="avoid-li">Excess processed soy</li>
+                  </ul>
+                </div>
+                <div class="food-card">
+                  <h3>→ Why It Helps</h3>
+                  <ul>
+                    <li class="why-li">Vitamin C aids follicle rupture and egg release</li>
+                    <li class="why-li">Omega-3s reduce inflammation around the follicle</li>
+                    <li class="why-li">Fibre moves excess estrogen out via digestion</li>
+                    <li class="why-li">Hydration keeps cervical fluid healthy</li>
+                  </ul>
+                </div>
+                <div class="food-card">
+                  <h3>₹ Cheap Finds</h3>
+                  <ul>
+                    <li class="cheap-li">Seasonal fruit chaat (₹20–40)</li>
+                    <li class="cheap-li">Coconut water (₹20–30)</li>
+                    <li class="cheap-li">Haldi doodh / turmeric milk (₹15–20)</li>
+                    <li class="cheap-li">Canned sardines (₹30–50)</li>
+                    <li class="cheap-li">Watermelon slice from vendor (₹10–20)</li>
+                  </ul>
+                </div>
+              </div>
+              <div class="food-full-card">
+                <div class="venue-header">All Venues — Ovulation Picks</div>
+                <ul style="list-style:none;padding:0">
+                  <li class="prefer-li" style="font-size:.84rem;padding:5px 0;border-bottom:1px solid #f3f3f3">Railway:
+                    Fresh fruit, coconut water, light salad boxes</li>
+                  <li class="prefer-li" style="font-size:.84rem;padding:5px 0;border-bottom:1px solid #f3f3f3">Roadside:
+                    Fruit chaat, cucumber with lime, sugarcane juice</li>
+                  <li class="prefer-li" style="font-size:.84rem;padding:5px 0;border-bottom:1px solid #f3f3f3">Café:
+                    Smoothies, grain bowls, salads — your best café phase</li>
+                  <li class="prefer-li" style="font-size:.84rem;padding:5px 0;border-bottom:1px solid #f3f3f3">Bakery:
+                    Seeded crackers, nut bars, fruit tarts (no cream)</li>
+                  <li class="prefer-li" style="font-size:.84rem;padding:5px 0">Hostel: Tuna/sardine pasta + veg stir-fry
+                    with turmeric</li>
+                </ul>
+              </div>
+            </div>
+
+            <!-- LUTEAL ALL -->
+            <div class="food-panel" id="fp-phase-luteal">
+              <div class="food-hero-bar" style="background:var(--luteal-soft);border-left:4px solid var(--luteal)">
+                <div style="font-size:2rem">🟣</div>
+                <div>
+                  <h2>Luteal Phase — Food Guide</h2>
+                  <p>Progesterone dominant. Cravings spike, blood sugar swings harder. Goal: steady energy, craving
+                    management, and PMS damage control through food.</p>
+                </div>
+              </div>
+              <div class="food-grid">
+                <div class="food-card">
+                  <h3>✓ Prefer</h3>
+                  <ul>
+                    <li class="prefer-li">Complex carbs — sweet potato, oats, brown rice</li>
+                    <li class="prefer-li">Dark chocolate 70%+ — magnesium + mood</li>
+                    <li class="prefer-li">Pumpkin seeds — highest magnesium source</li>
+                    <li class="prefer-li">Legumes — fibre clears progesterone metabolites</li>
+                    <li class="prefer-li">Curd, ragi, sesame — calcium reduces PMS</li>
+                    <li class="prefer-li">Banana, chickpeas — B6 fights mood dips</li>
+                    <li class="prefer-li">Warm soups — comfort + nutrition</li>
+                  </ul>
+                </div>
+                <div class="food-card">
+                  <h3>✗ Avoid</h3>
+                  <ul>
+                    <li class="avoid-li">Salty foods — worsen water retention significantly</li>
+                    <li class="avoid-li">Refined sugar — worsens mood crashes</li>
+                    <li class="avoid-li">Caffeine after 2pm — worsens luteal insomnia</li>
+                    <li class="avoid-li">Alcohol — progesterone + alcohol = next-day depression</li>
+                    <li class="avoid-li">Cold drinks — worsens bloating</li>
+                  </ul>
+                </div>
+                <div class="food-card">
+                  <h3>→ Why It Helps</h3>
+                  <ul>
+                    <li class="why-li">Magnesium reduces PMS symptoms by up to 40%</li>
+                    <li class="why-li">Calcium + Vitamin D reduces mood-related PMS (clinical evidence)</li>
+                    <li class="why-li">B6 is a serotonin cofactor — directly improves mood</li>
+                    <li class="why-li">Complex carbs raise serotonin — your cravings have a reason</li>
+                    <li class="why-li">Fibre clears excess progesterone and prevents bloating</li>
+                  </ul>
+                </div>
+                <div class="food-card">
+                  <h3>₹ Cheap Finds</h3>
+                  <ul>
+                    <li class="cheap-li">Banana daily (₹5–8)</li>
+                    <li class="cheap-li">Ragi roti or mudde (₹20–30) — best calcium grain</li>
+                    <li class="cheap-li">Pumpkin seeds (₹30 small packet)</li>
+                    <li class="cheap-li">Rajma / chole (₹40–60)</li>
+                    <li class="cheap-li">Dark chocolate bar 100g (₹50–80) — lasts the whole phase</li>
+                  </ul>
+                </div>
+              </div>
+              <div class="food-full-card">
+                <div class="venue-header">All Venues — Luteal Picks</div>
+                <ul style="list-style:none;padding:0">
+                  <li class="prefer-li" style="font-size:.84rem;padding:5px 0;border-bottom:1px solid #f3f3f3">Railway:
+                    Rajma chawal, banana, peanut chikki (jaggery + peanuts)</li>
+                  <li class="avoid-li" style="font-size:.84rem;padding:5px 0;border-bottom:1px solid #f3f3f3">Railway:
+                    Namkeen, bhujia, salted chips — immediate bloating</li>
+                  <li class="prefer-li" style="font-size:.84rem;padding:5px 0;border-bottom:1px solid #f3f3f3">Roadside:
+                    Sweet potato chaat, warm corn on the cob, banana</li>
+                  <li class="prefer-li" style="font-size:.84rem;padding:5px 0;border-bottom:1px solid #f3f3f3">Café:
+                    Decaf
+                    oat latte, banana bread, whole grain sandwich</li>
+                  <li class="prefer-li" style="font-size:.84rem;padding:5px 0;border-bottom:1px solid #f3f3f3">Bakery:
+                    Dark
+                    bread, oat cookies, small dark chocolate</li>
+                  <li class="prefer-li" style="font-size:.84rem;padding:5px 0;border-bottom:1px solid #f3f3f3">Hostel:
+                    Cook
+                    a big pot of chole on Day 22 — eat across 2 days</li>
+                  <li class="cheap-li" style="font-size:.84rem;padding:5px 0">Hostel hack: Chole + rice for 2 days ≈
+                    ₹80–120
+                    total</li>
+                </ul>
+              </div>
+            </div>
+
+            <!-- VENUE: RAILWAY (all phases) -->
+            <div class="food-panel" id="fp-venue-railway">
+              <div class="food-hero-bar" style="background:#EAF4FB;border-left:4px solid #2980B9">
+                <div style="font-size:2rem">🚉</div>
+                <div>
+                  <h2>Railway Station × All Phases</h2>
+                  <p>Station food is hot, cheap, and available 24/7. Know what to pick and what to skip.</p>
+                </div>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+                <div class="food-card">
+                  <h3>🔴 Menstrual</h3>
+                  <ul>
+                    <li class="prefer-li">Idli sambar, khichdi, boiled egg</li>
+                    <li class="avoid-li">Kachori, samosa, fried snacks</li>
+                    <li class="cheap-li">Dal chawal ≈ ₹40–60</li>
+                  </ul>
+                </div>
+                <div class="food-card">
+                  <h3>🟠 Follicular</h3>
+                  <ul>
+                    <li class="prefer-li">Curd rice, masala chaas, dosa</li>
+                    <li class="prefer-li">Boiled egg + fruit combo</li>
+                    <li class="cheap-li">Chaas ≈ ₹15–20</li>
+                  </ul>
+                </div>
+                <div class="food-card">
+                  <h3>🟢 Ovulation</h3>
+                  <ul>
+                    <li class="prefer-li">Fresh fruit, coconut water, salad box</li>
+                    <li class="avoid-li">Heavy curries, cream dishes</li>
+                    <li class="cheap-li">Coconut water ≈ ₹25–35</li>
+                  </ul>
+                </div>
+                <div class="food-card">
+                  <h3>🟣 Luteal</h3>
+                  <ul>
+                    <li class="prefer-li">Rajma chawal, banana, peanut chikki</li>
+                    <li class="avoid-li">Namkeen, salty bhujia, chips</li>
+                    <li class="cheap-li">Chikki ≈ ₹10–20</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <!-- VENUE: ROADSIDE -->
+            <div class="food-panel" id="fp-venue-roadside">
+              <div class="food-hero-bar" style="background:#FEF9E7;border-left:4px solid #F39C12">
+                <div style="font-size:2rem">🛺</div>
+                <div>
+                  <h2>Roadside Eateries × All Phases</h2>
+                  <p>Most affordable and accessible. Street food is not your enemy — know what to order.</p>
+                </div>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+                <div class="food-card">
+                  <h3>🔴 Menstrual</h3>
+                  <ul>
+                    <li class="prefer-li">Adrak chai, pongal, upma, poha</li>
+                    <li class="avoid-li">Bhajias, pakoras, oily curries</li>
+                    <li class="cheap-li">Pongal ≈ ₹20–30</li>
+                  </ul>
+                </div>
+                <div class="food-card">
+                  <h3>🟠 Follicular</h3>
+                  <ul>
+                    <li class="prefer-li">Sprout chaat, egg roll, chana</li>
+                    <li class="prefer-li">Coconut water, fresh lime soda</li>
+                    <li class="cheap-li">Sprout chaat ≈ ₹20</li>
+                  </ul>
+                </div>
+                <div class="food-card">
+                  <h3>🟢 Ovulation</h3>
+                  <ul>
+                    <li class="prefer-li">Fruit chaat, sugarcane juice, cucumber + lime</li>
+                    <li class="avoid-li">Excess fried street food</li>
+                    <li class="cheap-li">Fruit chaat ≈ ₹20–40</li>
+                  </ul>
+                </div>
+                <div class="food-card">
+                  <h3>🟣 Luteal</h3>
+                  <ul>
+                    <li class="prefer-li">Sweet potato chaat, warm corn, banana</li>
+                    <li class="avoid-li">Salted chips, fried namkeen</li>
+                    <li class="cheap-li">Corn ≈ ₹15–25</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <!-- VENUE: CAFE -->
+            <div class="food-panel" id="fp-venue-cafe">
+              <div class="food-hero-bar" style="background:#EAFAF1;border-left:4px solid #1ABC9C">
+                <div style="font-size:2rem">☕</div>
+                <div>
+                  <h2>Small Cafés × All Phases</h2>
+                  <p>More menu flexibility than you'd expect. Know the orders that work for your cycle.</p>
+                </div>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+                <div class="food-card">
+                  <h3>🔴 Menstrual</h3>
+                  <ul>
+                    <li class="prefer-li">Herbal tea, masala chai, oatmeal, egg toast</li>
+                    <li class="avoid-li">Espresso, cold brew, sugary drinks</li>
+                  </ul>
+                </div>
+                <div class="food-card">
+                  <h3>🟠 Follicular</h3>
+                  <ul>
+                    <li class="prefer-li">Green tea, egg sandwich, yogurt parfait</li>
+                    <li class="prefer-li">Any protein-forward item on the menu</li>
+                  </ul>
+                </div>
+                <div class="food-card">
+                  <h3>🟢 Ovulation</h3>
+                  <ul>
+                    <li class="prefer-li">Smoothies, grain bowls, salads, fresh juice</li>
+                    <li class="avoid-li">Cream-heavy items, excess sugar</li>
+                  </ul>
+                </div>
+                <div class="food-card">
+                  <h3>🟣 Luteal</h3>
+                  <ul>
+                    <li class="prefer-li">Decaf oat latte, banana bread, whole grain sandwich</li>
+                    <li class="avoid-li">Afternoon caffeine — worsens luteal insomnia</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <!-- VENUE: BAKERY -->
+            <div class="food-panel" id="fp-venue-bakery">
+              <div class="food-hero-bar" style="background:#FDF2F8;border-left:4px solid #E91E8C">
+                <div style="font-size:2rem">🥐</div>
+                <div>
+                  <h2>Bakeries × All Phases</h2>
+                  <p>Often the only option in transit zones. Navigate them smartly across your cycle.</p>
+                </div>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+                <div class="food-card">
+                  <h3>🔴 Menstrual</h3>
+                  <ul>
+                    <li class="prefer-li">Whole grain bread, oat biscuits, banana bread</li>
+                    <li class="avoid-li">Croissants, cream pastries — pro-inflammatory</li>
+                    <li class="cheap-li">Plain bread roll ≈ ₹10–15</li>
+                  </ul>
+                </div>
+                <div class="food-card">
+                  <h3>🟠 Follicular</h3>
+                  <ul>
+                    <li class="prefer-li">Seeded bread, multigrain rolls, nut bars</li>
+                    <li class="prefer-li">Egg-based items if available</li>
+                  </ul>
+                </div>
+                <div class="food-card">
+                  <h3>🟢 Ovulation</h3>
+                  <ul>
+                    <li class="prefer-li">Seeded crackers, fruit tarts (no cream), nut bars</li>
+                    <li class="avoid-li">Heavy cream pastries, sugary buns</li>
+                  </ul>
+                </div>
+                <div class="food-card">
+                  <h3>🟣 Luteal</h3>
+                  <ul>
+                    <li class="prefer-li">Dark bread, oat cookies, small dark chocolate</li>
+                    <li class="avoid-li">Salty pretzels, cheese-heavy items — bloating</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <!-- VENUE: HOSTEL -->
+            <div class="food-panel" id="fp-venue-hostel">
+              <div class="food-hero-bar" style="background:#F4ECF7;border-left:4px solid #8E44AD">
+                <div style="font-size:2rem">🍳</div>
+                <div>
+                  <h2>Hostel Kitchen × All Phases</h2>
+                  <p>Your biggest advantage as a budget traveler. Even a basic kitchen gives you enormous cycle
+                    nutrition
+                    control.</p>
+                </div>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+                <div class="food-card">
+                  <h3>🔴 Menstrual</h3>
+                  <ul>
+                    <li class="prefer-li">Instant oats + banana + peanut butter</li>
+                    <li class="prefer-li">Boiled eggs + canned lentil soup</li>
+                    <li class="cheap-li">Full day nutrition ≈ ₹60–80</li>
+                  </ul>
+                </div>
+                <div class="food-card">
+                  <h3>🟠 Follicular</h3>
+                  <ul>
+                    <li class="prefer-li">Scrambled eggs + beans + sautéed veg</li>
+                    <li class="prefer-li">Curd with seeds + fruit</li>
+                    <li class="cheap-li">Week groceries: eggs+lentils+curd ≈ ₹150–200</li>
+                  </ul>
+                </div>
+                <div class="food-card">
+                  <h3>🟢 Ovulation</h3>
+                  <ul>
+                    <li class="prefer-li">Tuna or sardine pasta + lots of veg</li>
+                    <li class="prefer-li">Stir-fry with turmeric, garlic, greens</li>
+                    <li class="cheap-li">Canned tuna + pasta ≈ ₹60–80</li>
+                  </ul>
+                </div>
+                <div class="food-card">
+                  <h3>🟣 Luteal</h3>
+                  <ul>
+                    <li class="prefer-li">Chickpea curry + rice — cook a big batch</li>
+                    <li class="prefer-li">Oatmeal + banana + dark chocolate shavings</li>
+                    <li class="cheap-li">Chole + rice for 2 days ≈ ₹80–120</li>
+                  </ul>
+                </div>
+              </div>
+              <div class="food-full-card" style="margin-top:14px">
+                <h3>🎒 The Traveller's Cycle Grocery List</h3>
+                <p style="font-size:.85rem;color:#555;margin-bottom:10px">These 10 items cover all 4 phases at minimal
+                  cost.
+                  Buy on arrival:</p>
+                <ul style="list-style:none;padding:0;display:grid;grid-template-columns:1fr 1fr;gap:4px">
+                  <li class="cheap-li" style="font-size:.83rem;padding:4px 0">Oats (₹50–80/kg)</li>
+                  <li class="cheap-li" style="font-size:.83rem;padding:4px 0">Eggs (₹60–80/dozen)</li>
+                  <li class="cheap-li" style="font-size:.83rem;padding:4px 0">Bananas (₹20–30/6)</li>
+                  <li class="cheap-li" style="font-size:.83rem;padding:4px 0">Peanut butter (₹80–120/jar)</li>
+                  <li class="cheap-li" style="font-size:.83rem;padding:4px 0">Canned chickpeas (₹30–50)</li>
+                  <li class="cheap-li" style="font-size:.83rem;padding:4px 0">Jaggery block (₹20–30)</li>
+                  <li class="cheap-li" style="font-size:.83rem;padding:4px 0">Pumpkin seeds (₹30–50)</li>
+                  <li class="cheap-li" style="font-size:.83rem;padding:4px 0">Dark chocolate 70%+ (₹60–80)</li>
+                  <li class="cheap-li" style="font-size:.83rem;padding:4px 0">Curd / yogurt (₹20–40)</li>
+                  <li class="cheap-li" style="font-size:.83rem;padding:4px 0">Fresh ginger (₹10)</li>
+                </ul>
+              </div>
+            </div>
+
+          </div><!-- /food-main -->
+        </div><!-- /food-layout -->
+      </div><!-- /s3 -->
+
+      <!-- SECTION 4: HEALTH CONDITIONS -->
+      <div class="section-page" id="s4">
+        <div class="hc-page">
+
+          <div class="hc-intro">
+            <div class="icon">ℹ️</div>
+            <p><strong>This section gives lifestyle and dietary guidance based on common cycle-related
+                experiences.</strong>
+              It is not a diagnostic tool and does not replace medical advice. Think of this as a practical companion —
+              not
+              a prescription. Toggle one or more conditions that feel relevant to you.</p>
+          </div>
+
+          <div class="condition-toggles">
+            <button class="cond-toggle active" data-cond="pcos"><span class="toggle-dot"></span>PCOS / PCOD</button>
+            <button class="cond-toggle" data-cond="irregular"><span class="toggle-dot"></span>Irregular Cycles</button>
+            <button class="cond-toggle" data-cond="painful"><span class="toggle-dot"></span>Painful Periods</button>
+            <button class="cond-toggle" data-cond="heavy"><span class="toggle-dot"></span>Heavy Bleeding</button>
+            <button class="cond-toggle" data-cond="anemia"><span class="toggle-dot"></span>Anemia / Low Iron</button>
+            <button class="cond-toggle" data-cond="acne"><span class="toggle-dot"></span>Hormonal Acne</button>
+          </div>
+
+          <div class="hc-cards-area" id="hc-cards">
+
+            <!-- PCOS -->
+            <div class="hc-card" data-card="pcos">
+              <div class="hc-accent-bar" style="background: linear-gradient(90deg,#8E44AD,#C39BD3)"></div>
+              <div class="hc-card-header">
+                <div class="hc-card-icon">🔮</div>
+                <div>
+                  <h2>PCOS / PCOD Quick Guide</h2>
+                  <p>Focus: Blood sugar stability & inflammation reduction.</p>
+                </div>
+              </div>
+              <div class="hc-card-body" style="grid-template-columns: 1fr 1fr; gap: 20px;">
+                <div class="hc-section">
+                  <h4>🥗 Eat / Avoid</h4>
+                  <ul class="support-list">
+                    <li>Pair carbs with protein/fat</li>
+                    <li>Low-GI: Oats, legumes, brown rice</li>
+                    <li><strong>Avoid:</strong> Refined flour & sugary drinks</li>
+                    <li>Spearmint tea (2 cups daily)</li>
+                  </ul>
+                </div>
+                <div class="hc-section">
+                  <h4>✈️ Travel & Lifestyle</h4>
+                  <ul class="support-list">
+                    <li>Carry your own low-GI snacks</li>
+                    <li>Prioritize sleep (jet lag hits harder)</li>
+                    <li>Strength training 2-3x / week</li>
+                    <li>Expect late/shifted periods in transit</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <!-- IRREGULAR CYCLES -->
+            <div class="hc-card hidden" data-card="irregular" style="display:none">
+              <div class="hc-accent-bar" style="background: linear-gradient(90deg,#E67E22,#F0B27A)"></div>
+              <div class="hc-card-header">
+                <div class="hc-card-icon">🌀</div>
+                <div>
+                  <h2>Irregular Cycles Cheat Sheet</h2>
+                  <p>Focus: Regularity through safety & nutrition.</p>
+                </div>
+              </div>
+              <div class="hc-card-body" style="grid-template-columns: 1fr 1fr; gap: 20px;">
+                <div class="hc-section">
+                  <h4>🥗 Practical Diet</h4>
+                  <ul class="support-list">
+                    <li>Eat enough calories (vital!)</li>
+                    <li>Zinc-rich: Eggs, pumpkin seeds</li>
+                    <li>Healthy fats: Avocado, Nuts</li>
+                    <li><strong>Avoid:</strong> Crash diets & excess caffeine</li>
+                  </ul>
+                </div>
+                <div class="hc-section">
+                  <h4>✈️ Travel & Lifestyle</h4>
+                  <ul class="support-list">
+                    <li>Carry 10 days of extra supplies</li>
+                    <li>Consistent wake/sleep times</li>
+                    <li>Track symptoms, not just dates</li>
+                    <li>Flexible travel plans are best</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <!-- PAINFUL PERIODS -->
+            <div class="hc-card" data-card="painful" style="display:none">
+              <div class="hc-accent-bar" style="background: linear-gradient(90deg,#C0392B,#E88080)"></div>
+              <div class="hc-card-header">
+                <div class="hc-card-icon">🌡️</div>
+                <div>
+                  <h2>Painful Periods Management</h2>
+                  <p>Focus: Anti-inflammatory prep & heat.</p>
+                </div>
+              </div>
+              <div class="hc-card-body" style="grid-template-columns: 1fr 1fr; gap: 20px;">
+                <div class="hc-section">
+                  <h4>🥗 Period Diet</h4>
+                  <ul class="support-list">
+                    <li>Omega-3 & Magnesium is key</li>
+                    <li>Ginger tea (as good as ibuprofen)</li>
+                    <li>Warm meals (Khichdi, Soup)</li>
+                    <li><strong>Avoid:</strong> Cold drinks & fried food</li>
+                  </ul>
+                </div>
+                <div class="hc-section">
+                  <h4>✈️ Travel & Lifestyle</h4>
+                  <ul class="support-list">
+                    <li>Take pain meds PREEMPTIVELY</li>
+                    <li>Aisle seat for movement loops</li>
+                    <li>Stick-on heat patches (essential)</li>
+                    <li>Days 1-2 = Non-negotiable rest</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <!-- HEAVY BLEEDING -->
+            <div class="hc-card" data-card="heavy" style="display:none">
+              <div class="hc-accent-bar" style="background: linear-gradient(90deg,#2980B9,#85C1E9)"></div>
+              <div class="hc-card-header">
+                <div class="hc-card-icon">🩸</div>
+                <div>
+                  <h2>Heavy Flow Rescue</h2>
+                  <p>Focus: Iron replenishment & protection.</p>
+                </div>
+              </div>
+              <div class="hc-card-body" style="grid-template-columns: 1fr 1fr; gap: 20px;">
+                <div class="hc-section">
+                  <h4>🥗 Replenish</h4>
+                  <ul class="support-list">
+                    <li>Iron with Vitamin C (Lemon + Dal)</li>
+                    <li>Protein at EVERY meal</li>
+                    <li>Raspberry leaf tea (uterine tone)</li>
+                    <li><strong>Avoid:</strong> Alcohol (blood thinner)</li>
+                  </ul>
+                </div>
+                <div class="hc-section">
+                  <h4>✈️ Travel & Lifestyle</h4>
+                  <ul class="support-list">
+                    <li>Double your usual product supply</li>
+                    <li>Wear dark, functional clothing</li>
+                    <li>Map bathrooms at every stop</li>
+                    <li>Sit/Rest before you feel dizzy</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <!-- ANEMIA -->
+            <div class="hc-card" data-card="anemia" style="display:none">
+              <div class="hc-accent-bar" style="background: linear-gradient(90deg,#27AE60,#82E0AA)"></div>
+              <div class="hc-card-header">
+                <div class="hc-card-icon">🩺</div>
+                <div>
+                  <h2>Anemia / Low Iron Cheat Sheet</h2>
+                  <p>Focus: Maximum iron absorption.</p>
+                </div>
+              </div>
+              <div class="hc-card-body" style="grid-template-columns: 1fr 1fr; gap: 20px;">
+                <div class="hc-section">
+                  <h4>🥗 Iron Intake</h4>
+                  <ul class="support-list">
+                    <li>Jaggery: Cheapest portable iron</li>
+                    <li>Beetroot juice & Moringa</li>
+                    <li><strong>Avoid:</strong> Tea/Coffee with meals</li>
+                    <li>Pair eggs/lentils with Lemon</li>
+                  </ul>
+                </div>
+                <div class="hc-section">
+                  <h4>✈️ Travel & Lifestyle</h4>
+                  <ul class="support-list">
+                    <li>Altitude worsens fatigue (take it slow)</li>
+                    <li>Inform buddies about fainting risk</li>
+                    <li>Stairs are hard—ask for help!</li>
+                    <li>Curative Sleep: 8+ hours non-neg</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <!-- HORMONAL ACNE -->
+            <div class="hc-card" data-card="acne" style="display:none">
+              <div class="hc-accent-bar" style="background: linear-gradient(90deg,#E91E8C,#F48FB1)"></div>
+              <div class="hc-card-header">
+                <div class="hc-card-icon">🌸</div>
+                <div>
+                  <h2>Hormonal Acne Quick Guide</h2>
+                  <p>Focus: Gut-skin axis & androgens.</p>
+                </div>
+              </div>
+              <div class="hc-card-body" style="grid-template-columns: 1fr 1fr; gap: 20px;">
+                <div class="hc-section">
+                  <h4>🥗 Inside-Out</h4>
+                  <ul class="support-list">
+                    <li>Zinc: Pumpkin seeds & chickpeas</li>
+                    <li>Probiotics: Curd, fermented food</li>
+                    <li><strong>Avoid:</strong> Dairy & High-GI sweets</li>
+                    <li>Green tea (anti-inflammatory)</li>
+                  </ul>
+                </div>
+                <div class="hc-section">
+                  <h4>✈️ Travel & Lifestyle</h4>
+                  <ul class="support-list">
+                    <li>Cleanse sweat IMMEDIATELY</li>
+                    <li>Change pillowcases frequently</li>
+                    <li>Salicylic acid for spot treatment</li>
+                    <li>8 hours sleep = Skincare</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <!-- Empty state -->
+            <div class="hc-empty" id="hc-empty" style="display:none">
+              <div class="empty-icon">⚙️</div>
+              <h3>No conditions selected</h3>
+              <p>Toggle one or more conditions above to see personalised diet, travel, energy, and natural support
+                guidance.
+              </p>
+            </div>
+
+          </div><!-- /hc-cards-area -->
+        </div><!-- /hc-page -->
+      </div><!-- /s4 -->
+
+
+
+
+      <script>
+        // Section navigation
+        document.querySelectorAll('.section-nav-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            document.querySelectorAll('.section-nav-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.section-page').forEach(p => p.classList.remove('active'));
+            btn.classList.add('active');
+            document.getElementById(btn.dataset.section).classList.add('active');
+          });
+        });
+
+        // Phase switching (Section 1)
+        document.querySelectorAll('.phase-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            document.querySelectorAll('.phase-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.phase-panel').forEach(p => p.classList.remove('active'));
+            btn.classList.add('active');
+            document.getElementById('panel-' + btn.dataset.phase).classList.add('active');
+          });
+        });
+
+        // Day tab switching (Section 1)
+        document.querySelectorAll('.day-tab').forEach(tab => {
+          tab.addEventListener('click', () => {
+            const panel = tab.closest('.phase-panel');
+            panel.querySelectorAll('.day-tab').forEach(t => t.classList.remove('active'));
+            panel.querySelectorAll('.day-content').forEach(c => c.classList.remove('active'));
+            tab.classList.add('active');
+            panel.querySelector('#' + tab.dataset.day).classList.add('active');
+          });
+        });
+
+        // Travel mode switching (Section 2)
+        document.querySelectorAll('.tm-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            document.querySelectorAll('.tm-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.travel-panel').forEach(p => p.classList.remove('active'));
+            btn.classList.add('active');
+            document.getElementById('mode-' + btn.dataset.mode).classList.add('active');
+          });
+        });
+
+        // Section 3 — Food Intelligence dual-axis switching
+        let activePhase = 'menstrual';
+        let activeVenue = 'all';
+
+        function showFoodPanel() {
+          document.querySelectorAll('.food-panel').forEach(p => p.classList.remove('active'));
+          // venue "all" shows the phase overview; specific venues show the venue panel (keyed by menstrual- prefix)
+          let id;
+          if (activeVenue === 'all') {
+            id = 'fp-' + activePhase + '-all';
+          } else {
+            id = 'fp-menstrual-' + activeVenue; // venue panels show all phases
+          }
+          const el = document.getElementById(id);
+          if (el) el.classList.add('active');
+        }
+
+        document.querySelectorAll('.food-phase-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            document.querySelectorAll('.food-phase-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            activePhase = btn.dataset.fphase;
+            // if on a venue panel, phase selection resets to overview
+            if (activeVenue !== 'all') {
+              activeVenue = 'all';
+              document.querySelectorAll('.food-venue-btn').forEach(b => b.classList.remove('active'));
+              document.querySelector('.food-venue-btn[data-venue="all"]').classList.add('active');
+            }
+            showFoodPanel();
+          });
+        });
+
+        // Section 4 — Health Condition toggles
+        const activeConditions = new Set(['pcos']);
+
+        function refreshConditionCards() {
+          const cards = document.querySelectorAll('.hc-card[data-card]');
+          const empty = document.getElementById('hc-empty');
+          let anyVisible = false;
+
+          cards.forEach(card => {
+            const cond = card.dataset.card;
+            if (activeConditions.has(cond)) {
+              card.style.display = 'block';
+              anyVisible = true;
+            } else {
+              card.style.display = 'none';
+            }
+          });
+
+          empty.style.display = anyVisible ? 'none' : 'block';
+        }
+
+        document.querySelectorAll('.cond-toggle').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const cond = btn.dataset.cond;
+            if (activeConditions.has(cond)) {
+              activeConditions.delete(cond);
+              btn.classList.remove('active');
+            } else {
+              activeConditions.add(cond);
+              btn.classList.add('active');
+            }
+            refreshConditionCards();
+          });
+        });
+
+        /* food venue btn handler */
+        document.querySelectorAll('.food-venue-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            document.querySelectorAll('.food-venue-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            activeVenue = btn.dataset.venue;
+            showFoodPanel();
+          });
+        });
+
+      </script>
+
+      <!-- SECTION 5: SMART TRAVEL TOOLS -->
+      <div class="section-page active" id="s5">
+        <div class="tools-page">
+          <div
+            style="background: #1e1e1e; color: white; padding: 40px 32px; border-radius: 16px; margin-bottom: 24px; text-align: center;">
+            <h2 style="font-family: 'Playfair Display', serif; font-size: 2rem; margin-bottom: 12px;">Welcome to
+              CycleWise
+            </h2>
+            <p style="font-size: 0.95rem; color: #aaa; max-width: 600px; margin: 0 auto 24px;">Your companion for
+              navigating
+              the world, synchronized with your cycle. Use the tools below to prepare for your journey or get immediate
+              support.</p>
+            <div style="display: flex; gap: 12px; justify-content: center;">
+              <span
+                style="background: #333; padding: 6px 14px; border-radius: 100px; font-size: 0.75rem; color: #ddd;">✓
+                Smart Packing</span>
+              <span
+                style="background: #333; padding: 6px 14px; border-radius: 100px; font-size: 0.75rem; color: #ddd;">✓
+                Emergency Support</span>
+              <span
+                style="background: #333; padding: 6px 14px; border-radius: 100px; font-size: 0.75rem; color: #ddd;">✓
+                Safety Guides</span>
+            </div>
+          </div>
+
+          <div class="tools-tabs">
+            <button class="tool-tab-btn active" data-tool="kit">🎒 Kit Generator</button>
+            <button class="tool-tab-btn" data-tool="emergency">🆘 Emergency Mode</button>
+            <button class="tool-tab-btn" data-tool="redflag">🚩 Red Flag Guide</button>
+          </div>
+
+          <!-- ═══════════════════════════════════ -->
+          <!-- TOOL 1: KIT GENERATOR              -->
+          <!-- ═══════════════════════════════════ -->
+          <div class="tool-panel active" id="tool-kit">
+
+            <div class="kit-controls">
+              <div class="kit-control-card">
+                <label>Current Phase</label>
+                <select id="kit-phase">
+                  <option value="menstrual">🔴 Menstrual (Days 1–5)</option>
+                  <option value="follicular">🟠 Follicular (Days 6–13)</option>
+                  <option value="ovulation">🟢 Ovulation (Days 14–16)</option>
+                  <option value="luteal">🟣 Luteal (Days 17–28)</option>
+                </select>
+              </div>
+              <div class="kit-control-card">
+                <label>Travel Type</label>
+                <select id="kit-travel">
+                  <option value="train">🚂 Long Train Journey</option>
+                  <option value="bus">🚌 Bus Travel</option>
+                  <option value="flight">✈️ Flight</option>
+                  <option value="backpack">🎒 Backpacking</option>
+                  <option value="hostel">🏠 Hostel Stay</option>
+                </select>
+              </div>
+              <div class="kit-control-card">
+                <label>Trip Duration</label>
+                <select id="kit-duration">
+                  <option value="day">Day trip (under 12 hrs)</option>
+                  <option value="short">Short trip (1–3 days)</option>
+                  <option value="week">Week-long trip</option>
+                  <option value="long">Extended travel (2+ weeks)</option>
+                </select>
+              </div>
+              <div class="kit-control-card">
+                <label>Health Conditions (optional)</label>
+                <div class="checkbox-group">
+                  <label><input type="checkbox" class="kit-cond" value="pcos"> PCOS / PCOD</label>
+                  <label><input type="checkbox" class="kit-cond" value="painful"> Painful periods</label>
+                  <label><input type="checkbox" class="kit-cond" value="heavy"> Heavy bleeding</label>
+                  <label><input type="checkbox" class="kit-cond" value="anemia"> Anemia / Low iron</label>
+                </div>
+              </div>
+            </div>
+
+            <button class="generate-btn" id="generate-kit-btn">⚡ Generate My Kit</button>
+
+            <div class="kit-output" id="kit-output">
+              <div class="kit-summary-bar">
+                <div class="summary-text">Your personalised travel kit · <strong id="kit-item-count">0 items</strong>
+                </div>
+                <button class="print-btn" onclick="window.print()">🖨 Print List</button>
+              </div>
+              <div id="kit-categories"></div>
+            </div>
+          </div>
+
+          <!-- ═══════════════════════════════════ -->
+          <!-- TOOL 2: EMERGENCY MODE             -->
+          <!-- ═══════════════════════════════════ -->
+          <div class="tool-panel" id="tool-emergency">
+
+            <div class="emergency-grid">
+              <div class="emergency-card when">
+                <h3>🟡 When to Pause and Assess</h3>
+                <ul>
+                  <li>Cramps severe enough to prevent walking or standing</li>
+                  <li>Soaking through a pad or tampon every hour for 2+ hours</li>
+                  <li>Feeling faint, dizzy, or lightheaded when standing</li>
+                  <li>Nausea severe enough to prevent eating or drinking</li>
+                  <li>Fever alongside period symptoms (unusual — take it seriously)</li>
+                  <li>Pain that doesn't respond to your usual painkillers at correct dose</li>
+                  <li>Bleeding that continues beyond 8–10 days without stopping</li>
+                </ul>
+              </div>
+
+              <div class="emergency-card steps">
+                <h3>🔵 Travel-Safe Response Steps</h3>
+                <ol class="steps-numbered">
+                  <li><strong>Stop moving.</strong> Find a place to sit or lie down immediately.</li>
+                  <li><strong>Eat and hydrate.</strong> Low blood sugar worsens all symptoms — eat something, sip water
+                    slowly.</li>
+                  <li><strong>Take pain relief</strong> if you have it and haven't already reached your safe dose.</li>
+                  <li><strong>Apply heat</strong> if available — a heat patch, warm water bottle, or even warm water
+                    compress.</li>
+                  <li><strong>Tell someone nearby</strong> — a companion, hotel staff, or fellow traveller — that you
+                    need a
+                    moment.</li>
+                  <li><strong>Give it 20–30 minutes.</strong> Most acute symptoms ease with rest, warmth, and food.</li>
+                  <li><strong>If symptoms don't ease</strong> or worsen — seek medical help. Don't wait it out alone.
+                  </li>
+                </ol>
+              </div>
+
+              <div class="emergency-card warn">
+                <h3>🔴 Symptoms That Need Same-Day Medical Help</h3>
+                <ul>
+                  <li>Soaking through products every 30 minutes or less</li>
+                  <li>Passing clots larger than a 50-paise coin repeatedly</li>
+                  <li>Fainting or nearly fainting — not just lightheadedness</li>
+                  <li>Severe pain in one side of the lower abdomen (could indicate something other than period)</li>
+                  <li>Fever above 38°C alongside pelvic pain</li>
+                  <li>Difficulty breathing alongside heavy bleeding</li>
+                  <li>Sudden change in flow pattern unlike anything you've experienced before</li>
+                </ul>
+              </div>
+            </div>
+
+            <div class="hotline-box">
+              <div class="icon">📞</div>
+              <div>
+                <h4>Emergency Numbers to Save Before You Travel</h4>
+                <p>Save these before you leave. Add the number of the nearest clinic at each destination once you
+                  arrive.
+                </p>
+                <div class="numbers">
+                  <span class="hotline-num">🇮🇳 India: 112</span>
+                  <span class="hotline-num">🇬🇧 UK: 999 / 111</span>
+                  <span class="hotline-num">🇺🇸 USA: 911</span>
+                  <span class="hotline-num">🇪🇺 Europe: 112</span>
+                  <span class="hotline-num">🇦🇺 Australia: 000</span>
+                  <span class="hotline-num">🌍 Intl: +local 112</span>
+                </div>
+              </div>
+            </div>
+
+            <div
+              style="margin-top:20px; background:#FEF9E7; border-radius:14px; padding:18px 22px; border-left:4px solid #F39C12;">
+              <p style="font-size:0.84rem; line-height:1.6; color:#555;"><strong style="color:#333">Travelling
+                  alone?</strong> Before every trip, share your itinerary with one trusted person who knows your cycle
+                patterns. Set a daily check-in time. If you don't check in, they know to follow up. This is not paranoia
+                —
+                it's basic travel safety for anyone, amplified by the reality of travelling with a body that has monthly
+                health variables.</p>
+            </div>
+          </div>
+
+          <!-- ═══════════════════════════════════ -->
+          <!-- TOOL 3: RED FLAG GUIDE             -->
+          <!-- ═══════════════════════════════════ -->
+          <div class="tool-panel" id="tool-redflag">
+
+            <div class="redflag-intro">
+              <div class="icon">💛</div>
+              <p>This guide helps you tell the difference between <strong>normal period discomfort</strong> and
+                <strong>symptoms that warrant attention</strong>. Most period experiences, even difficult ones, are not
+                emergencies. But some signals are worth taking seriously. You know your body — trust it.
+              </p>
+            </div>
+
+            <div class="redflag-grid">
+
+              <div class="redflag-card flag-red">
+                <div class="redflag-card-top">
+                  <span style="font-size:1.4rem">🩸</span>
+                  <h3>Heavy or Unusual Bleeding</h3>
+                </div>
+                <ul>
+                  <li><span class="flag-dot"></span>Soaking a full pad or tampon in under an hour, two hours running
+                  </li>
+                  <li><span class="flag-dot"></span>Passing clots consistently larger than a 10-rupee coin</li>
+                  <li><span class="flag-dot"></span>Bleeding that lasts longer than 10 days without slowing</li>
+                  <li><span class="flag-dot"></span>Bleeding between periods that isn't light spotting</li>
+                  <li><span class="flag-dot"></span>Post-sex bleeding that recurs</li>
+                  <li><span class="flag-dot"></span><em style="color:#aaa">Normal: heavier Day 1–2, lighter after
+                      that</em>
+                  </li>
+                </ul>
+              </div>
+
+              <div class="redflag-card flag-orange">
+                <div class="redflag-card-top">
+                  <span style="font-size:1.4rem">😵</span>
+                  <h3>Dizziness & Fatigue</h3>
+                </div>
+                <ul>
+                  <li><span class="flag-dot"></span>Fainting or blacking out — even briefly</li>
+                  <li><span class="flag-dot"></span>Dizziness severe enough to prevent standing safely</li>
+                  <li><span class="flag-dot"></span>Heart racing or pounding during your period</li>
+                  <li><span class="flag-dot"></span>Extreme breathlessness with normal activity during period</li>
+                  <li><span class="flag-dot"></span>Persistent fatigue that doesn't ease after rest and eating</li>
+                  <li><span class="flag-dot"></span><em style="color:#aaa">Normal: tiredness on Days 1–2, improved by
+                      Day
+                      3</em></li>
+                </ul>
+              </div>
+
+              <div class="redflag-card flag-blue">
+                <div class="redflag-card-top">
+                  <span style="font-size:1.4rem">🌡️</span>
+                  <h3>Pain Patterns</h3>
+                </div>
+                <ul>
+                  <li><span class="flag-dot"></span>Pain that doesn't respond to standard painkillers at the correct
+                    dose
+                  </li>
+                  <li><span class="flag-dot"></span>Sharp pain on one side only (not general cramping)</li>
+                  <li><span class="flag-dot"></span>Pain that radiates to the shoulder or back without obvious cause
+                  </li>
+                  <li><span class="flag-dot"></span>Pain during sex that gets worse over time</li>
+                  <li><span class="flag-dot"></span>Pelvic pain that persists throughout the cycle, not just during
+                    period
+                  </li>
+                  <li><span class="flag-dot"></span><em style="color:#aaa">Normal: cramping Days 1–2, easing by Day
+                      3–4</em>
+                  </li>
+                </ul>
+              </div>
+
+              <div class="redflag-card flag-purple">
+                <div class="redflag-card-top">
+                  <span style="font-size:1.4rem">📅</span>
+                  <h3>Cycle Abnormalities</h3>
+                </div>
+                <ul>
+                  <li><span class="flag-dot"></span>No period for 3+ months without pregnancy or known cause</li>
+                  <li><span class="flag-dot"></span>Cycle consistently shorter than 21 days or longer than 35</li>
+                  <li><span class="flag-dot"></span>Sudden dramatic change in cycle length or flow volume</li>
+                  <li><span class="flag-dot"></span>Periods that were regular and suddenly become very irregular</li>
+                  <li><span class="flag-dot"></span>Spotting in the luteal phase that recurs every cycle</li>
+                  <li><span class="flag-dot"></span><em style="color:#aaa">Normal: slight variation month-to-month (1–5
+                      days)</em></li>
+                </ul>
+              </div>
+
+              <div class="redflag-card flag-green">
+                <div class="redflag-card-top">
+                  <span style="font-size:1.4rem">🌡️</span>
+                  <h3>Other Warning Signs</h3>
+                </div>
+                <ul>
+                  <li><span class="flag-dot"></span>Fever (38°C+) alongside pelvic pain or unusual discharge</li>
+                  <li><span class="flag-dot"></span>Unusual discharge colour, smell, or texture alongside pain</li>
+                  <li><span class="flag-dot"></span>Sudden swelling or bloating that doesn't ease after your period ends
+                  </li>
+                  <li><span class="flag-dot"></span>Unexplained weight changes alongside cycle disruption</li>
+                  <li><span class="flag-dot"></span>Hair loss or excessive facial hair appearing alongside irregular
+                    cycles
+                  </li>
+                  <li><span class="flag-dot"></span><em style="color:#aaa">Normal: mild bloating in luteal, resolves
+                      with
+                      period</em></li>
+                </ul>
+              </div>
+
+              <div class="redflag-card" style="border-top: 3px solid #2C2C2C;">
+                <div class="redflag-card-top" style="background:#f5f5f5;">
+                  <span style="font-size:1.4rem">✅</span>
+                  <h3>What IS Normal</h3>
+                </div>
+                <ul>
+                  <li><span class="flag-dot" style="background:#27AE60"></span>Cramping on Days 1–2, fading by Day 3
+                  </li>
+                  <li><span class="flag-dot" style="background:#27AE60"></span>Heavier flow on Days 1–2, lighter by Day
+                    4–5
+                  </li>
+                  <li><span class="flag-dot" style="background:#27AE60"></span>Fatigue, mood changes, mild breast
+                    tenderness
+                    in luteal</li>
+                  <li><span class="flag-dot" style="background:#27AE60"></span>Small clots (smaller than 10-rupee coin)
+                    occasionally</li>
+                  <li><span class="flag-dot" style="background:#27AE60"></span>Cycle varying 1–5 days month to month
+                  </li>
+                  <li><span class="flag-dot" style="background:#27AE60"></span>Bloating and appetite changes in the week
+                    before period</li>
+                </ul>
+              </div>
+
+            </div>
+
+            <div class="redflag-action">
+              <h4>If You See a Red Flag While Travelling — Here's Your Plan</h4>
+              <div class="action-row">
+                <div class="action-chip"><strong>Step 1 — Don't dismiss it</strong>If something feels different from
+                  your
+                  usual pattern, that's information. Trust your body's signals.</div>
+                <div class="action-chip"><strong>Step 2 — Stabilise first</strong>Sit, eat, hydrate. Take stock of all
+                  your
+                  symptoms calmly before deciding next steps.</div>
+                <div class="action-chip"><strong>Step 3 — Find a clinic</strong>Search "gynaecologist near me" or go to
+                  the
+                  nearest hospital's outpatient department. You don't need a referral for walk-in.</div>
+                <div class="action-chip"><strong>Step 4 — Communicate clearly</strong>Tell the doctor: your cycle day,
+                  what's unusual, how long it's been happening. Be specific.</div>
+                <div class="action-chip"><strong>Step 5 — Have insurance ready</strong>Travel health insurance should
+                  cover
+                  gynaecological emergencies. Know your policy number and helpline before you leave.</div>
+                <div class="action-chip"><strong>Step 6 — Follow up at home</strong>Even if the acute issue resolves,
+                  book a
+                  follow-up with your regular doctor when you're back.</div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div><!-- /s5 -->
+
+    </div><!-- /main-content -->
+
+    <aside class="sidebar">
+      <div class="sidebar-widget">
+        <h3>Live Cycle Status</h3>
+        <div class="status-pill-big" id="sidebar-status-pill"
+          style="background: var(--menstrual-soft); border-left: 4px solid var(--menstrual);">
+          <div class="icon" id="sidebar-phase-icon">🔴</div>
+          <div class="info">
+            <h4 id="sidebar-phase-name">Menstrual Phase</h4>
+            <p id="sidebar-phase-day">Day 3 of 28 · Low Energy</p>
+          </div>
+        </div>
+        <p id="sidebar-phase-desc" style="font-size: 0.8rem; color: #666; line-height: 1.4;">Your body is focused on
+          interior work. Priority:
+          Rest and Hydration.</p>
+      </div>
+
+      <div class="sidebar-widget">
+        <h3>Travel Readiness</h3>
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+          <label
+            style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: #444; cursor: pointer;">
+            <input type="checkbox" id="side-kit-packed"> <span>Smart Kit Generated</span>
+          </label>
+          <label
+            style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: #444; cursor: pointer;">
+            <input type="checkbox" id="side-emergency-viewed"> <span>Emergency Mode On</span>
+          </label>
+          <label
+            style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: #444; cursor: pointer;">
+            <input type="checkbox" id="side-hydration"> <span>Hydration Goal: 2L</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="sidebar-widget" style="background: #FFF5F5; border-color: #FED7D7;">
+        <h3>Quick SOS</h3>
+        <p style="font-size: 0.75rem; color: #C53030; margin-bottom: 12px;">Immediate support for pain or safety
+          concerns.</p>
+        <button class="generate-btn" id="sos-trigger-btn" style="width: 100%; margin-bottom: 0; background: #C53030;"
+          onclick="triggerSOSModal()">🆘 EMERGENCY CALL</button>
+      </div>
+
+      <div class="sidebar-widget">
+        <h3>Today's Focus</h3>
+        <div id="sidebar-focus-box"
+          style="font-size: 0.82rem; padding: 12px 14px; background: #F5E8E6; border-radius: 10px; color: #A84E45; margin-top: 8px; transition: all 0.3s ease; line-height: 1.55;">
+
+          🌿 Take it slow today. Avoid confrontation and heavy physical tasks.
+        </div>
+      </div>
+    </aside>
+
+    <!-- ═══════ SOS MODAL ═══════ -->
+    <div id="sos-modal-overlay" style="
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.6);
+      z-index: 9999;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(4px);
+    ">
+      <div id="sos-modal-box" style="
+        background: white;
+        border-radius: 20px;
+        max-width: 420px;
+        width: 90%;
+        overflow: hidden;
+        box-shadow: 0 24px 60px rgba(0,0,0,0.35);
+        animation: sosPop 0.3s cubic-bezier(0.175,0.885,0.32,1.275);
+      ">
+        <div style="background: #C53030; padding: 28px 28px 20px; text-align:center;">
+          <div style="font-size: 3rem; animation: sosPulse 1s ease infinite;">🆘</div>
+          <h2 style="color:white; font-family:'Playfair Display',serif; font-size:1.5rem; margin-top:10px;">SOS Alert
+            Sent</h2>
+          <p style="color:#FFB3B3; font-size:0.82rem; margin-top:6px;">Initiated at <span id="sos-time"></span></p>
+        </div>
+        <div style="padding: 24px 28px;">
+          <p style="font-size:0.95rem; line-height:1.7; color:#333; margin-bottom:18px;">
+            <strong>Emergency services have been alerted</strong> with your current location.<br>
+            Please <strong style="color:#C53030;">stay calm</strong> — help is on the way.
+          </p>
+          <div
+            style="background:#FFF5F5; border-left:4px solid #C53030; padding:12px 16px; border-radius:8px; margin-bottom:20px;">
+            <p style="font-size:0.82rem; color:#555; line-height:1.6;">
+              📍 Share your exact location with emergency responders.<br>
+              🏥 Stay where you are unless unsafe to do so.<br>
+              📞 Keep your phone with you and charged.
+            </p>
+          </div>
+          <button onclick="closeSOSModal()" style="
+            width:100%; padding:14px;
+            background:#C53030; color:white;
+            border:none; border-radius:100px;
+            font-family:'DM Sans',sans-serif;
+            font-size:0.95rem; font-weight:700;
+            cursor:pointer; letter-spacing:0.5px;
+            transition: background 0.2s;
+          " onmouseover="this.style.background='#a02020'" onmouseout="this.style.background='#C53030'">
+            ✓ Got it — I'm safe
+          </button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    // ── SOS Modal ──
+    function triggerSOSModal() {
+      const ts = new Date().toLocaleTimeString();
+      document.getElementById('sos-time').textContent = ts;
+      console.log('EMERGENCY: SOS call initiated at ' + ts);
+      const overlay = document.getElementById('sos-modal-overlay');
+      overlay.style.display = 'flex';
+      // Re-trigger animation by cloning the inner box
+      const box = document.getElementById('sos-modal-box');
+      box.style.animation = 'none';
+      void box.offsetWidth;
+      box.style.animation = 'sosPop 0.3s cubic-bezier(0.175,0.885,0.32,1.275)';
+    }
+
+    function closeSOSModal() {
+      document.getElementById('sos-modal-overlay').style.display = 'none';
+    }
+
+    // Close modal when clicking the backdrop
+    document.getElementById('sos-modal-overlay').addEventListener('click', function (e) {
+      if (e.target === this) closeSOSModal();
+    });
+
+    // ── Sidebar Interactivity ──
+
+    const phaseSidebarInfo = {
+      menstrual: {
+        name: 'Menstrual Phase',
+        icon: '🔴',
+        day: 'Day 1 of 28 · Low Energy',
+        desc: 'Your body is focused on interior work. Priority: Rest and Hydration.',
+        focus: '🌿 Take it slow today. Avoid confrontation and heavy physical tasks.',
+        color: 'var(--menstrual)',
+        softColor: 'var(--menstrual-soft)',
+        focusColor: '#C0392B',
+        focusBg: '#FDF2F2'
+      },
+      follicular: {
+        name: 'Follicular Phase',
+        icon: '🟠',
+        day: 'Day 8 of 28 · Increasing Energy',
+        desc: 'Estrogen is rising. You\'re feeling more social and creative.',
+        focus: '✨ Great for planning and starting new projects.',
+        color: 'var(--follicular)',
+        softColor: 'var(--follicular-soft)',
+        focusColor: '#E67E22',
+        focusBg: '#FEF5E7'
+      },
+      ovulation: {
+        name: 'Ovulation Phase',
+        icon: '🟢',
+        day: 'Day 14 of 28 · Peak Energy',
+        desc: 'You\'re at your most communicative and magnetic.',
+        focus: '🔥 Ideal for social events or high-stakes meetings.',
+        color: 'var(--ovulation)',
+        softColor: 'var(--ovulation-soft)',
+        focusColor: '#27AE60',
+        focusBg: '#EAFAF1'
+      },
+      luteal: {
+        name: 'Luteal Phase',
+        icon: '🟣',
+        day: 'Day 21 of 28 · Declining Energy',
+        desc: 'Progesterone is high. You might feel more inward-focused.',
+        focus: '🧘 Focus on finishing tasks and nesting.',
+        color: 'var(--luteal)',
+        softColor: 'var(--luteal-soft)',
+        focusColor: '#8E44AD',
+        focusBg: '#F4ECF7'
+      }
+    };
+
+    function updateSidebarFromPhase(phase) {
+      const info = phaseSidebarInfo[phase];
+      if (!info) return;
+
+      const widget = document.querySelector('.sidebar-widget');
+      widget.classList.remove('pulse');
+      void widget.offsetWidth; // Trigger reflow
+      widget.classList.add('pulse');
+
+      const pill = document.getElementById('sidebar-status-pill');
+      pill.style.background = info.softColor;
+      pill.style.borderLeftColor = info.color;
+
+      document.getElementById('sidebar-phase-icon').textContent = info.icon;
+      document.getElementById('sidebar-phase-name').textContent = info.name;
+      document.getElementById('sidebar-phase-day').textContent = info.day;
+      document.getElementById('sidebar-phase-desc').textContent = info.desc;
+
+      const focusBox = document.getElementById('sidebar-focus-box');
+      focusBox.textContent = info.focus;
+      focusBox.style.background = info.focusBg;
+      focusBox.style.color = info.focusColor;
+
+      // Sync the kit-phase dropdown if it's not the source
+      const kitPhaseSelect = document.getElementById('kit-phase');
+      if (kitPhaseSelect.value !== phase) {
+        kitPhaseSelect.value = phase;
+      }
+    }
+
+    // Link Kit Generator Phase to Sidebar
+    document.getElementById('kit-phase').addEventListener('change', (e) => {
+      updateSidebarFromPhase(e.target.value);
+    });
+
+    // Link Section 1 Phase Nav to Sidebar
+    document.querySelectorAll('.phase-nav .phase-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        updateSidebarFromPhase(btn.dataset.phase);
+      });
+    });
+
+    // Initialize sidebar with current selection
+    updateSidebarFromPhase(document.getElementById('kit-phase').value);
+
+    // Tool switches update checkboxes and show panels
+    document.querySelectorAll('.tool-tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tool-tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tool-panel').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById('tool-' + btn.dataset.tool).classList.add('active');
+
+        if (btn.dataset.tool === 'emergency') {
+          document.getElementById('side-emergency-viewed').checked = true;
+        }
+      });
+    });
+
+    // ── Kit Generator Data ──
+    const kitData = {
+      hygiene: {
+        label: '🧴 Hygiene & Products',
+        base: ['Pads — regular absorbency', 'Pads — heavy night absorbency', 'Spare underwear (dark coloured)', 'Biodegradable wet wipes (unscented)', 'Small zip-lock bags for disposal', 'Hand sanitiser', 'Compact mirror for bathroom checks'],
+        byPhase: {
+          menstrual: ['Period underwear (1–2 pairs)', 'Menstrual cup or disc as backup', 'Miniature unscented deodorant'],
+          follicular: ['Light panty liners (spotting may occur)'],
+          ovulation: ['Light panty liners', 'Intimate wash (travel size, pH-balanced)'],
+          luteal: ['Period underwear (liner)', 'Panty liners for PMS spotting days'],
+        },
+        byTravel: {
+          flight: ['Menstrual cup or disc — fewer changes at altitude', 'Compression socks (reduces DVT risk during bleeding)'],
+          backpack: ['Milton tablets for cup sterilisation', 'Quick-dry period underwear (2 pairs)'],
+          hostel: ['Wrist clip pouch for bathroom runs', 'Mini padlock for locker storage'],
+          train: ['Extra supply bag clipped inside main bag'],
+          bus: ['Highest-capacity product for boarding'],
+        },
+        byCondition: {
+          heavy: ['High-capacity menstrual disc', 'Extra 50% supplies beyond your calculation'],
+          painful: ['Extra product set near top of bag for quick access'],
+        }
+      },
+      pain: {
+        label: '💊 Pain & Comfort Support',
+        base: ['Ibuprofen or mefenamic acid (for cramps)', 'Paracetamol as backup', 'Stick-on heat patch (ThermaCare/Moov)', 'Small portable heat pack', 'Peppermint oil (for nausea)', 'Ginger chews or ginger candy'],
+        byPhase: {
+          menstrual: ['Double dose of heat patches for Days 1–2', 'Anti-nausea tablets if cramps cause nausea'],
+          follicular: [],
+          ovulation: ['Mild painkiller for Mittelschmerz (mid-cycle cramps)'],
+          luteal: ['Magnesium supplement for PMS cramp prevention', 'Anti-bloating remedy (simethicone or jeera water)'],
+        },
+        byTravel: {
+          flight: ['Melatonin (0.5–1mg) for jet lag cycle disruption'],
+          backpack: ['Portable TENS device', 'Electrolyte sachets'],
+          hostel: ['Reusable heat pack (microwave in hostel kitchen)'],
+          train: ['Extra heat patch — apply before boarding'],
+          bus: ['Travel sickness tablets (motion + cramps cause nausea)'],
+        },
+        byCondition: {
+          painful: ['TENS device (portable)', 'Castor oil pack cloth for pre-period use'],
+          pcos: ['Magnesium glycinate supplement'],
+          anemia: ['Iron supplement', 'Vitamin C tablet to boost iron absorption'],
+        }
+      },
+      nutrition: {
+        label: '🥜 Nutrition & Snacks',
+        base: ['Peanut butter sachet or small jar', 'Mixed nuts packet', 'Banana or dried banana chips', 'Jaggery block or chikki', 'Oat or granola bar (low sugar)', 'Electrolyte sachets or ORS powder', 'Instant oat sachets'],
+        byPhase: {
+          menstrual: ['Iron-rich snack: sesame laddoo or peanut chikki', 'Herbal tea bags (ginger, chamomile)', 'Dark chocolate 70%+ (small bar)'],
+          follicular: ['Protein bar or nut bar', 'Flaxseed sachet'],
+          ovulation: ['Vitamin C snack: amla candy or fruit bar', 'Pumpkin seed packet'],
+          luteal: ['Dark chocolate 70%+ (magnesium + mood)', 'Complex carb snack: oat bar or rice crackers', 'Magnesium-rich trail mix'],
+        },
+        byTravel: {
+          flight: ['Still water (avoid fizzy drinks — altitude bloating is worse)', 'Non-salty snacks — sodium worsens in-flight bloating'],
+          backpack: ['Canned tuna or sardines (trail protein)', 'Instant miso soup sachets'],
+          hostel: ['Small peanut butter jar (lasts the trip)', 'Grocery list saved offline on phone'],
+          train: ['Snacks accessible from top of bag — not buried'],
+          bus: ['Easy-open snacks for a moving vehicle'],
+        },
+        byCondition: {
+          anemia: ['Moringa powder sachet (stir into food)', 'Sesame laddoo or til chikki'],
+          pcos: ['Low-GI snacks only: nuts, seeds — no sugary bars', 'Spearmint tea bags', 'Cinnamon sachet for tea'],
+          heavy: ['Extra protein snacks for blood loss recovery', 'Coconut water sachets or powder'],
+        }
+      },
+      emergency: {
+        label: '🆘 Emergency Backups',
+        base: ['Emergency contact written on paper (not just phone)', 'Travel health insurance card + policy number', 'Key document photocopies in a separate bag', 'Basic first aid kit (plasters, antiseptic)', 'Local emergency number saved offline', 'Portable battery pack (phone charged)'],
+        byPhase: {
+          menstrual: ['Full extra day\'s period supplies beyond your estimate', 'Painkiller name in local language if travelling abroad'],
+          follicular: [],
+          ovulation: [],
+          luteal: ['Comfort item (earphones, journal, snack) for PMS mood dips', 'Extra snacks for late-luteal cravings'],
+        },
+        byTravel: {
+          flight: ['All period supplies in carry-on — never in checked luggage', 'Travel insurance emergency helpline saved offline'],
+          backpack: ['Nearest clinic at every destination noted', '3 extra days of supplies beyond trip length'],
+          hostel: ['Padlock for locker', 'Nearest 24-hour pharmacy noted'],
+          train: ['Destination address saved offline', 'Platform bathroom locations researched in advance'],
+          bus: ['Scheduled stop times written down', 'Small change for paid public toilets'],
+        },
+        byCondition: {
+          anemia: ['Medical alert note: iron deficiency', 'Doctor contact saved offline'],
+          painful: ['Doctor\'s letter if carrying prescription pain medication internationally'],
+          heavy: ['Red flag symptom list saved offline (when to go to hospital)'],
+          pcos: ['Recent symptom log with cycle data — useful if you need a doctor abroad'],
+        }
+      }
+    };
+
+    document.getElementById('generate-kit-btn').addEventListener('click', () => {
+      document.getElementById('side-kit-packed').checked = true;
+      const phase = document.getElementById('kit-phase').value;
+      const travel = document.getElementById('kit-travel').value;
+      const duration = document.getElementById('kit-duration').value;
+      const conds = [...document.querySelectorAll('.kit-cond:checked')].map(c => c.value);
+
+      const output = document.getElementById('kit-output');
+      const catArea = document.getElementById('kit-categories');
+      catArea.innerHTML = '';
+      let totalCount = 0;
+
+      const durationNote = { day: '', short: '', week: ' · double all quantities', long: ' · triple quantities or plan resupply' }[duration];
+
+      Object.entries(kitData).forEach(([key, cat]) => {
+        const items = new Set(cat.base);
+        (cat.byPhase[phase] || []).forEach(i => items.add(i));
+        (cat.byTravel[travel] || []).forEach(i => items.add(i));
+        conds.forEach(c => (cat.byCondition[c] || []).forEach(i => items.add(i)));
+
+        totalCount += items.size;
+
+        const block = document.createElement('div');
+        block.className = 'kit-category';
+        block.innerHTML = `
+        <div class="kit-category-header">
+          <h3>${cat.label}<span style="font-size:0.72rem;font-weight:400;color:#aaa;margin-left:8px">${durationNote}</span></h3>
+          <span class="kit-count">${items.size} items</span>
+        </div>
+        <div class="kit-items" id="kit-items-${key}"></div>`;
+        catArea.appendChild(block);
+
+        const itemArea = block.querySelector('#kit-items-' + key);
+        items.forEach(item => {
+          const el = document.createElement('label');
+          el.className = 'kit-item';
+          el.innerHTML = `<input type="checkbox"> <span>${item}</span>`;
+          el.querySelector('input').addEventListener('change', function () {
+            el.classList.toggle('checked', this.checked);
+          });
+          itemArea.appendChild(el);
+        });
+      });
+
+      document.getElementById('kit-item-count').textContent = totalCount + ' items';
+      output.classList.add('visible');
+      output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+
+    // ── Food Intelligence Interactivity ──
+    const foodPhaseBtns = document.querySelectorAll('.food-phase-btn');
+    const foodVenueBtns = document.querySelectorAll('.food-venue-btn');
+    const foodPanels = document.querySelectorAll('.food-panel');
+
+    function hideAllFoodPanels() {
+      foodPanels.forEach(p => p.classList.remove('active'));
+    }
+
+    foodPhaseBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        foodPhaseBtns.forEach(b => b.classList.remove('active'));
+        foodVenueBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        document.querySelector('.food-venue-btn[data-venue="all"]').classList.add('active');
+
+        hideAllFoodPanels();
+        const phase = btn.dataset.fphase;
+        document.getElementById('fp-phase-' + phase)?.classList.add('active');
+      });
+    });
+
+    foodVenueBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (btn.dataset.venue === 'all') {
+          const activePhase = document.querySelector('.food-phase-btn.active') || document.querySelector('.food-phase-btn[data-fphase="menstrual"]');
+          activePhase.click();
+          return;
+        }
+
+        foodPhaseBtns.forEach(b => b.classList.remove('active'));
+        foodVenueBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+
+        hideAllFoodPanels();
+        const venue = btn.dataset.venue;
+        document.getElementById('fp-venue-' + venue)?.classList.add('active');
+      });
+    });
+
+    // ── Health Conditions Interactivity ──
+    const condToggles = document.querySelectorAll('.cond-toggle');
+    const hcCards = document.querySelectorAll('.hc-card');
+    let hcEmptyState = document.getElementById('hc-empty-state');
+
+    // Create empty state dynamically if it doesn't exist
+    if (!hcEmptyState) {
+      hcEmptyState = document.createElement('div');
+      hcEmptyState.id = 'hc-empty-state';
+      hcEmptyState.className = 'hc-empty';
+      hcEmptyState.style.display = 'none';
+      hcEmptyState.innerHTML = '<div class="empty-icon">🧘‍♀️</div><h3>No conditions selected</h3><p>Select any relevant conditions above to see personalised lifestyle and dietary guidance during travel.</p>';
+      document.getElementById('hc-cards').appendChild(hcEmptyState);
+    }
+
+    function updateHCState() {
+      let activeAny = false;
+      hcCards.forEach(card => {
+        const cardCond = card.dataset.card;
+        const toggle = document.querySelector('.cond-toggle[data-cond="' + cardCond + '"]');
+        if (toggle && toggle.classList.contains('active')) {
+          card.style.display = 'block';
+          activeAny = true;
+        } else {
+          card.style.display = 'none';
+        }
+      });
+
+      if (activeAny) {
+        hcEmptyState.style.display = 'none';
+      } else {
+        hcEmptyState.style.display = 'block';
+      }
+    }
+
+    condToggles.forEach(toggle => {
+      toggle.addEventListener('click', () => {
+        toggle.classList.toggle('active');
+        updateHCState();
+      });
+    });
+
+    // Initialize the health condition view on load
+    updateHCState();
+  </script>
+
+</body>
+
+</html>

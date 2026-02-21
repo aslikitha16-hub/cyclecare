@@ -1,0 +1,3174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CycleWise — Cycle Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --menstrual: #C0392B;
+    --menstrual-soft: #FADBD8;
+    --follicular: #E67E22;
+    --follicular-soft: #FDEBD0;
+    --ovulation: #27AE60;
+    --ovulation-soft: #D5F5E3;
+    --luteal: #8E44AD;
+    --luteal-soft: #E8DAEF;
+    --bg: #FAF7F4;
+    --text: #2C2C2C;
+    --text-muted: #7A7A7A;
+    --card-bg: #FFFFFF;
+    --radius: 16px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  header {
+    background: #2C2C2C;
+    color: white;
+    padding: 28px 32px 20px;
+  }
+
+  header h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: 2rem;
+    letter-spacing: -0.5px;
+  }
+
+  header p {
+    color: #aaa;
+    font-size: 0.85rem;
+    margin-top: 4px;
+    font-weight: 300;
+  }
+
+  .phase-nav {
+    display: flex;
+    gap: 8px;
+    padding: 20px 32px;
+    background: #2C2C2C;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .phase-nav::-webkit-scrollbar { display: none; }
+
+  .phase-btn {
+    padding: 8px 20px;
+    border: 2px solid transparent;
+    border-radius: 100px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s ease;
+    background: #3a3a3a;
+    color: #ccc;
+  }
+
+  .phase-btn.active, .phase-btn:hover {
+    color: white;
+  }
+
+  .phase-btn[data-phase="menstrual"].active { background: var(--menstrual); border-color: var(--menstrual); }
+  .phase-btn[data-phase="follicular"].active { background: var(--follicular); border-color: var(--follicular); }
+  .phase-btn[data-phase="ovulation"].active { background: var(--ovulation); border-color: var(--ovulation); }
+  .phase-btn[data-phase="luteal"].active { background: var(--luteal); border-color: var(--luteal); }
+
+  .main { padding: 28px 32px; max-width: 960px; }
+
+  .phase-panel { display: none; animation: fadeIn 0.3s ease; }
+  .phase-panel.active { display: block; }
+
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+  .phase-hero {
+    border-radius: var(--radius);
+    padding: 28px;
+    margin-bottom: 24px;
+    border-left: 5px solid;
+  }
+
+  .phase-hero.menstrual { background: var(--menstrual-soft); border-color: var(--menstrual); }
+  .phase-hero.follicular { background: var(--follicular-soft); border-color: var(--follicular); }
+  .phase-hero.ovulation { background: var(--ovulation-soft); border-color: var(--ovulation); }
+  .phase-hero.luteal { background: var(--luteal-soft); border-color: var(--luteal); }
+
+  .phase-hero h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.6rem;
+    margin-bottom: 6px;
+  }
+
+  .phase-hero .days-range {
+    font-size: 0.8rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    opacity: 0.65;
+    margin-bottom: 14px;
+  }
+
+  .phase-hero .summary {
+    font-size: 0.95rem;
+    line-height: 1.6;
+    max-width: 600px;
+  }
+
+  .grid-3 {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  .card {
+    background: var(--card-bg);
+    border-radius: var(--radius);
+    padding: 20px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  }
+
+  .card h3 {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-weight: 500;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+  }
+
+  .bar-label { font-size: 0.82rem; margin-bottom: 5px; font-weight: 500; }
+  .bar-track {
+    height: 8px;
+    background: #eee;
+    border-radius: 99px;
+    overflow: hidden;
+    margin-bottom: 14px;
+  }
+  .bar-fill {
+    height: 100%;
+    border-radius: 99px;
+    transition: width 0.6s ease;
+  }
+
+  .mood-tag {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 100px;
+    font-size: 0.78rem;
+    font-weight: 500;
+    margin: 3px 2px;
+  }
+
+  .priority-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 0;
+    border-bottom: 1px solid #f0f0f0;
+    font-size: 0.88rem;
+  }
+  .priority-item:last-child { border-bottom: none; }
+  .priority-icon { font-size: 1.1rem; }
+
+  .travel-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    border-radius: 100px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    margin-bottom: 12px;
+  }
+
+  .travel-tips li {
+    font-size: 0.85rem;
+    line-height: 1.5;
+    margin-bottom: 6px;
+    padding-left: 4px;
+    list-style: none;
+  }
+  .travel-tips li::before { content: "→ "; color: var(--text-muted); }
+
+  /* Day-by-day */
+  .day-tabs {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+  .day-tab {
+    padding: 6px 16px;
+    border-radius: 100px;
+    border: 1.5px solid #ddd;
+    background: white;
+    font-size: 0.82rem;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 500;
+    transition: all 0.15s;
+  }
+  .day-tab.active {
+    background: #2C2C2C;
+    color: white;
+    border-color: #2C2C2C;
+  }
+
+  .day-content { display: none; }
+  .day-content.active { display: block; animation: fadeIn 0.2s ease; }
+
+  .day-tip-card {
+    background: #F8F8F8;
+    border-radius: 12px;
+    padding: 16px 18px;
+  }
+  .day-tip-card h4 { font-size: 0.9rem; font-weight: 600; margin-bottom: 8px; }
+  .day-tip-card p { font-size: 0.85rem; line-height: 1.6; color: #444; }
+  .day-tip-card ul { padding-left: 16px; margin-top: 8px; }
+  .day-tip-card ul li { font-size: 0.84rem; line-height: 1.6; color: #444; margin-bottom: 4px; }
+
+  .section-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.1rem;
+    margin-bottom: 14px;
+    margin-top: 4px;
+  }
+
+  @media (max-width: 600px) {
+    header, .phase-nav, .main { padding-left: 16px; padding-right: 16px; }
+    .grid-3 { grid-template-columns: 1fr; }
+  }
+
+  /* ── Section Navigation ── */
+  .section-nav {
+    display: flex;
+    gap: 0;
+    background: #1a1a1a;
+    border-bottom: 1px solid #333;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .section-nav::-webkit-scrollbar { display: none; }
+
+  .section-nav-btn {
+    padding: 12px 22px;
+    background: transparent;
+    border: none;
+    color: #888;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.82rem;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .section-nav-btn.active, .section-nav-btn:hover {
+    color: white;
+    border-bottom-color: #fff;
+  }
+
+  .section-page { display: none; }
+  .section-page.active { display: block; }
+
+  /* ── Section 2 — Travel ── */
+  .travel-mode-tabs {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    padding: 20px 32px 0;
+  }
+  .tm-btn {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 9px 18px;
+    border-radius: 100px;
+    border: 1.5px solid #ddd;
+    background: white;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.84rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: var(--text);
+  }
+  .tm-btn.active {
+    background: #2C2C2C;
+    color: white;
+    border-color: #2C2C2C;
+  }
+  .tm-btn:hover:not(.active) { background: #f5f5f5; }
+
+  .travel-panel { display: none; padding: 24px 32px; animation: fadeIn 0.3s ease; }
+  .travel-panel.active { display: block; }
+
+  .travel-hero {
+    border-radius: var(--radius);
+    padding: 24px 28px;
+    margin-bottom: 22px;
+    display: flex;
+    align-items: flex-start;
+    gap: 20px;
+  }
+  .travel-hero .icon-big { font-size: 2.6rem; flex-shrink: 0; }
+  .travel-hero h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.45rem;
+    margin-bottom: 6px;
+  }
+  .travel-hero p { font-size: 0.88rem; line-height: 1.6; opacity: 0.85; max-width: 560px; }
+
+  .tip-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 14px;
+    margin-bottom: 0;
+  }
+
+  .tip-block {
+    background: var(--card-bg);
+    border-radius: 14px;
+    padding: 18px 20px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  }
+  .tip-block h3 {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-muted);
+    margin-bottom: 10px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .tip-block ul { list-style: none; padding: 0; }
+  .tip-block ul li {
+    font-size: 0.84rem;
+    line-height: 1.55;
+    padding: 5px 0;
+    border-bottom: 1px solid #f0f0f0;
+    color: #333;
+  }
+  .tip-block ul li:last-child { border-bottom: none; }
+  .tip-block ul li::before { content: "· "; color: #bbb; font-weight: bold; }
+
+  .difficulty-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 18px;
+    flex-wrap: wrap;
+  }
+  .diff-pill {
+    padding: 5px 14px;
+    border-radius: 100px;
+    font-size: 0.78rem;
+    font-weight: 600;
+  }
+
+  /* ── Section 5 — Travel Tools ── */
+  .tools-page { padding: 28px 32px; max-width: 1000px; }
+
+  .tools-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 28px;
+    flex-wrap: wrap;
+  }
+  .tool-tab-btn {
+    padding: 10px 22px;
+    border-radius: 100px;
+    border: 2px solid #ddd;
+    background: white;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: #555;
+  }
+  .tool-tab-btn:hover { border-color: #aaa; color: #333; }
+  .tool-tab-btn.active { background: #2C2C2C; color: white; border-color: #2C2C2C; }
+
+  .tool-panel { display: none; animation: fadeIn 0.3s ease; }
+  .tool-panel.active { display: block; }
+
+  /* ── Kit Generator ── */
+  .kit-controls {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 14px;
+    margin-bottom: 24px;
+  }
+  .kit-control-card {
+    background: white;
+    border-radius: 14px;
+    padding: 18px 20px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  }
+  .kit-control-card label {
+    display: block;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-weight: 700;
+    color: var(--text-muted);
+    margin-bottom: 10px;
+  }
+  .kit-control-card select, .kit-control-card input[type=range] {
+    width: 100%;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.85rem;
+    border: 1.5px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 8px 12px;
+    background: #fafafa;
+    color: var(--text);
+    appearance: none;
+    cursor: pointer;
+  }
+  .kit-control-card select:focus { outline: none; border-color: #aaa; }
+
+  .checkbox-group { display: flex; flex-direction: column; gap: 8px; }
+  .checkbox-group label {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    font-size: 0.84rem;
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: 0;
+    color: var(--text);
+    cursor: pointer;
+  }
+  .checkbox-group input[type=checkbox] {
+    width: 16px; height: 16px;
+    accent-color: #2C2C2C;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+
+  .generate-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 28px;
+    background: #2C2C2C;
+    color: white;
+    border: none;
+    border-radius: 100px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-bottom: 24px;
+  }
+  .generate-btn:hover { background: #444; transform: translateY(-1px); }
+  .generate-btn:active { transform: translateY(0); }
+
+  .kit-output { display: none; }
+  .kit-output.visible { display: block; animation: fadeIn 0.3s ease; }
+
+  .kit-category {
+    background: white;
+    border-radius: 14px;
+    padding: 20px 22px;
+    margin-bottom: 14px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  }
+  .kit-category-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+  }
+  .kit-category-header h3 {
+    font-size: 0.9rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .kit-count {
+    font-size: 0.72rem;
+    background: #f0f0f0;
+    padding: 3px 10px;
+    border-radius: 100px;
+    color: #777;
+    font-weight: 600;
+  }
+  .kit-items {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 8px;
+  }
+  .kit-item {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 8px 12px;
+    background: #fafafa;
+    border-radius: 9px;
+    font-size: 0.82rem;
+    color: #333;
+    border: 1px solid #f0f0f0;
+  }
+  .kit-item input[type=checkbox] {
+    accent-color: #27AE60;
+    width: 15px; height: 15px;
+    flex-shrink: 0;
+  }
+  .kit-item.checked { opacity: 0.45; text-decoration: line-through; }
+
+  .kit-summary-bar {
+    background: #1e1e1e;
+    color: white;
+    border-radius: 12px;
+    padding: 16px 22px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .kit-summary-bar .summary-text { font-size: 0.85rem; color: #ccc; }
+  .kit-summary-bar .summary-text strong { color: white; }
+  .print-btn {
+    padding: 8px 20px;
+    background: transparent;
+    border: 1.5px solid #555;
+    border-radius: 100px;
+    color: #ccc;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .print-btn:hover { border-color: #fff; color: #fff; }
+
+  /* ── Emergency Mode ── */
+  .emergency-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .emergency-card {
+    border-radius: 16px;
+    padding: 22px 24px;
+    border-left: 5px solid;
+  }
+  .emergency-card.when  { background: #FEF9E7; border-color: #F39C12; }
+  .emergency-card.steps { background: #EAF4FB; border-color: #2980B9; }
+  .emergency-card.warn  { background: #FDEDEC; border-color: #E74C3C; }
+
+  .emergency-card h3 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.1rem;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .emergency-card ul { list-style: none; padding: 0; }
+  .emergency-card ul li {
+    font-size: 0.84rem;
+    line-height: 1.55;
+    padding: 6px 0;
+    border-bottom: 1px solid rgba(0,0,0,0.06);
+    color: #333;
+  }
+  .emergency-card ul li:last-child { border-bottom: none; }
+  .emergency-card ul li::before { content: "→ "; color: #999; }
+
+  .steps-numbered { list-style: none; padding: 0; counter-reset: steps; }
+  .steps-numbered li {
+    counter-increment: steps;
+    font-size: 0.84rem;
+    line-height: 1.55;
+    padding: 8px 0 8px 36px;
+    border-bottom: 1px solid rgba(0,0,0,0.06);
+    color: #333;
+    position: relative;
+  }
+  .steps-numbered li::before {
+    content: counter(steps);
+    position: absolute;
+    left: 0;
+    top: 8px;
+    width: 22px; height: 22px;
+    background: #2980B9;
+    color: white;
+    border-radius: 50%;
+    font-size: 0.7rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+  }
+  .steps-numbered li:last-child { border-bottom: none; }
+
+  .hotline-box {
+    background: #2C2C2C;
+    color: white;
+    border-radius: 14px;
+    padding: 20px 24px;
+    margin-top: 20px;
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+  }
+  .hotline-box .icon { font-size: 1.8rem; flex-shrink: 0; }
+  .hotline-box h4 { font-size: 0.9rem; font-weight: 700; margin-bottom: 6px; }
+  .hotline-box p { font-size: 0.82rem; color: #bbb; line-height: 1.5; }
+  .hotline-box .numbers { margin-top: 10px; display: flex; gap: 10px; flex-wrap: wrap; }
+  .hotline-num {
+    padding: 5px 14px;
+    background: #3a3a3a;
+    border-radius: 100px;
+    font-size: 0.8rem;
+    color: #eee;
+    font-weight: 600;
+  }
+
+  /* ── Red Flag ── */
+  .redflag-intro {
+    background: #FDF8F0;
+    border: 1.5px solid #F0C080;
+    border-radius: 14px;
+    padding: 16px 20px;
+    font-size: 0.84rem;
+    line-height: 1.6;
+    color: #555;
+    margin-bottom: 22px;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+  }
+  .redflag-intro .icon { font-size: 1.3rem; flex-shrink: 0; }
+
+  .redflag-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 14px;
+    margin-bottom: 22px;
+  }
+  .redflag-card {
+    background: white;
+    border-radius: 14px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+    overflow: hidden;
+  }
+  .redflag-card-top {
+    padding: 14px 18px 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .redflag-card-top h3 {
+    font-size: 0.9rem;
+    font-weight: 700;
+  }
+  .redflag-card ul {
+    list-style: none;
+    padding: 0 18px 14px;
+    margin: 0;
+  }
+  .redflag-card ul li {
+    font-size: 0.82rem;
+    line-height: 1.5;
+    padding: 5px 0;
+    border-bottom: 1px solid #f5f5f5;
+    color: #333;
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+  }
+  .redflag-card ul li:last-child { border-bottom: none; }
+  .flag-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    margin-top: 5px;
+  }
+  .flag-red .flag-dot    { background: #E74C3C; }
+  .flag-orange .flag-dot { background: #E67E22; }
+  .flag-blue .flag-dot   { background: #2980B9; }
+  .flag-purple .flag-dot { background: #8E44AD; }
+  .flag-green .flag-dot  { background: #27AE60; }
+
+  .flag-red .redflag-card-top    { background: #FDEDEC; }
+  .flag-orange .redflag-card-top { background: #FEF5E7; }
+  .flag-blue .redflag-card-top   { background: #EAF4FB; }
+  .flag-purple .redflag-card-top { background: #F4ECF7; }
+  .flag-green .redflag-card-top  { background: #EAFAF1; }
+
+  .redflag-action {
+    background: #2C2C2C;
+    color: white;
+    border-radius: 14px;
+    padding: 20px 24px;
+    margin-top: 6px;
+  }
+  .redflag-action h4 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1rem;
+    margin-bottom: 12px;
+    color: #fff;
+  }
+  .action-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 10px;
+  }
+  .action-chip {
+    background: #3a3a3a;
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 0.81rem;
+    line-height: 1.5;
+    color: #ddd;
+  }
+  .action-chip strong { color: white; display: block; margin-bottom: 3px; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.5px; }
+
+  @media (max-width: 640px) {
+    .tools-page { padding: 16px; }
+    .kit-items { grid-template-columns: 1fr; }
+    .emergency-grid, .redflag-grid { grid-template-columns: 1fr; }
+    .action-row { grid-template-columns: 1fr; }
+  }
+</style>
+  .hc-page { padding: 28px 32px; max-width: 1000px; }
+
+  .hc-intro {
+    background: #1e1e1e;
+    color: #ccc;
+    border-radius: 14px;
+    padding: 18px 22px;
+    font-size: 0.83rem;
+    line-height: 1.6;
+    margin-bottom: 24px;
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+  }
+  .hc-intro .icon { font-size: 1.4rem; flex-shrink: 0; margin-top: 2px; }
+  .hc-intro p { margin: 0; }
+  .hc-intro strong { color: #fff; }
+
+  /* Toggle chips */
+  .condition-toggles {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 28px;
+  }
+
+  .cond-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 18px;
+    border-radius: 100px;
+    border: 2px solid #ddd;
+    background: white;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.84rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: #555;
+    user-select: none;
+  }
+  .cond-toggle:hover { border-color: #aaa; color: #333; }
+  .cond-toggle.active { color: white; border-color: transparent; }
+  .cond-toggle[data-cond="pcos"].active        { background: #8E44AD; }
+  .cond-toggle[data-cond="irregular"].active   { background: #E67E22; }
+  .cond-toggle[data-cond="painful"].active     { background: #C0392B; }
+  .cond-toggle[data-cond="heavy"].active       { background: #2980B9; }
+  .cond-toggle[data-cond="anemia"].active      { background: #27AE60; }
+  .cond-toggle[data-cond="acne"].active        { background: #E91E8C; }
+
+  .cond-toggle .toggle-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: #ddd;
+    transition: background 0.2s;
+    flex-shrink: 0;
+  }
+  .cond-toggle[data-cond="pcos"] .toggle-dot      { background: #E8DAEF; }
+  .cond-toggle[data-cond="irregular"] .toggle-dot { background: #FDEBD0; }
+  .cond-toggle[data-cond="painful"] .toggle-dot   { background: #FADBD8; }
+  .cond-toggle[data-cond="heavy"] .toggle-dot     { background: #D6EAF8; }
+  .cond-toggle[data-cond="anemia"] .toggle-dot    { background: #D5F5E3; }
+  .cond-toggle[data-cond="acne"] .toggle-dot      { background: #FCE4EC; }
+  .cond-toggle.active .toggle-dot { background: rgba(255,255,255,0.4); }
+
+  /* Condition cards */
+  .hc-cards-area { display: flex; flex-direction: column; gap: 20px; }
+
+  .hc-card {
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+    overflow: hidden;
+    animation: fadeIn 0.3s ease;
+  }
+
+  .hc-card-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 20px 24px;
+    border-bottom: 1px solid #f0f0f0;
+  }
+  .hc-card-icon { font-size: 1.8rem; }
+  .hc-card-header h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.2rem;
+    margin-bottom: 3px;
+  }
+  .hc-card-header p { font-size: 0.8rem; color: var(--text-muted); line-height: 1.4; }
+
+  .hc-card-body {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 0;
+  }
+
+  .hc-section {
+    padding: 18px 22px;
+    border-right: 1px solid #f5f5f5;
+    border-bottom: 1px solid #f5f5f5;
+  }
+  .hc-section:last-child { border-right: none; }
+
+  .hc-section h4 {
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    font-weight: 700;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .hc-section ul { list-style: none; padding: 0; margin: 0; }
+  .hc-section ul li {
+    font-size: 0.82rem;
+    line-height: 1.5;
+    padding: 4px 0;
+    border-bottom: 1px solid #fafafa;
+    color: #333;
+  }
+  .hc-section ul li:last-child { border-bottom: none; }
+  .hc-section ul li::before { content: "· "; font-weight: bold; color: #ccc; }
+
+  .hc-section.diet h4    { color: #27AE60; }
+  .hc-section.avoid h4   { color: #E74C3C; }
+  .hc-section.travel h4  { color: #2980B9; }
+  .hc-section.energy h4  { color: #E67E22; }
+  .hc-section.natural h4 { color: #8E44AD; }
+
+  .hc-empty {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-muted);
+  }
+  .hc-empty .empty-icon { font-size: 2.5rem; margin-bottom: 12px; }
+  .hc-empty h3 { font-family: 'Playfair Display', serif; font-size: 1.2rem; margin-bottom: 8px; color: #555; }
+  .hc-empty p { font-size: 0.85rem; line-height: 1.6; max-width: 340px; margin: 0 auto; }
+
+  .hc-accent-bar {
+    height: 4px;
+    width: 100%;
+  }
+
+  @media (max-width: 700px) {
+    .hc-page { padding: 16px; }
+    .hc-card-body { grid-template-columns: 1fr; }
+    .hc-section { border-right: none; }
+  }
+</style>
+  .food-layout { display: grid; grid-template-columns: 220px 1fr; min-height: 600px; }
+
+  .food-sidebar {
+    background: #1e1e1e;
+    padding: 20px 0;
+  }
+
+  .food-phase-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 12px 20px;
+    background: transparent;
+    border: none;
+    color: #999;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    text-align: left;
+    border-left: 3px solid transparent;
+    transition: all 0.2s;
+  }
+  .food-phase-btn:hover { background: #2a2a2a; color: #fff; }
+  .food-phase-btn.active { color: #fff; background: #2a2a2a; }
+  .food-phase-btn.active[data-fphase="menstrual"] { border-left-color: var(--menstrual); }
+  .food-phase-btn.active[data-fphase="follicular"] { border-left-color: var(--follicular); }
+  .food-phase-btn.active[data-fphase="ovulation"] { border-left-color: var(--ovulation); }
+  .food-phase-btn.active[data-fphase="luteal"] { border-left-color: var(--luteal); }
+
+  .food-sidebar-label {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: #555;
+    padding: 16px 20px 8px;
+    font-weight: 600;
+  }
+
+  .food-sidebar .venue-divider {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: #555;
+    padding: 20px 20px 8px;
+    font-weight: 600;
+    border-top: 1px solid #333;
+    margin-top: 8px;
+  }
+
+  .food-venue-btn {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    width: 100%;
+    padding: 10px 20px;
+    background: transparent;
+    border: none;
+    color: #888;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.82rem;
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.18s;
+    border-left: 3px solid transparent;
+  }
+  .food-venue-btn:hover { background: #2a2a2a; color: #ccc; }
+  .food-venue-btn.active { background: #2a2a2a; color: #fff; border-left-color: #666; }
+
+  .food-main {
+    padding: 28px 32px;
+    overflow-y: auto;
+    background: var(--bg);
+  }
+
+  .food-panel { display: none; animation: fadeIn 0.25s ease; }
+  .food-panel.active { display: block; }
+
+  .food-hero-bar {
+    border-radius: 12px;
+    padding: 18px 22px;
+    margin-bottom: 22px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .food-hero-bar h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.3rem;
+    margin-bottom: 3px;
+  }
+  .food-hero-bar p { font-size: 0.83rem; opacity: 0.8; line-height: 1.5; }
+
+  .food-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-bottom: 16px;
+  }
+
+  .food-card {
+    background: white;
+    border-radius: 14px;
+    padding: 18px 20px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  }
+  .food-card h3 {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-muted);
+    margin-bottom: 10px;
+    font-weight: 600;
+  }
+  .food-card ul { list-style: none; padding: 0; }
+  .food-card ul li {
+    font-size: 0.84rem;
+    line-height: 1.55;
+    padding: 5px 0;
+    border-bottom: 1px solid #f3f3f3;
+    color: #333;
+  }
+  .food-card ul li:last-child { border-bottom: none; }
+
+  .prefer-li::before { content: "✓ "; color: #27AE60; font-weight: bold; }
+  .avoid-li::before { content: "✗ "; color: #E74C3C; font-weight: bold; }
+  .why-li::before { content: "→ "; color: #8E44AD; font-weight: bold; }
+  .cheap-li::before { content: "₹ "; color: #E67E22; font-weight: bold; }
+
+  .food-full-card {
+    background: white;
+    border-radius: 14px;
+    padding: 20px 22px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    margin-bottom: 14px;
+  }
+  .food-full-card h3 {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-muted);
+    margin-bottom: 10px;
+    font-weight: 600;
+  }
+
+  .venue-header {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.15rem;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .venue-tag {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.72rem;
+    font-weight: 500;
+    padding: 3px 10px;
+    border-radius: 100px;
+    background: #f0f0f0;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  @media (max-width: 700px) {
+    .food-layout { grid-template-columns: 1fr; }
+    .food-sidebar { display: flex; flex-wrap: wrap; gap: 4px; padding: 12px; }
+    .food-phase-btn, .food-venue-btn { width: auto; padding: 7px 14px; border-radius: 100px; border-left: none !important; font-size: 0.78rem; }
+    .food-sidebar-label, .food-sidebar .venue-divider { display: none; }
+    .food-grid { grid-template-columns: 1fr; }
+    .food-main { padding: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>CycleWise</h1>
+  <p>Your cycle. Your conditions. Your rules.</p>
+</header>
+
+<nav class="section-nav">
+  <button class="section-nav-btn active" data-section="s1">🌙 Phase Intelligence</button>
+  <button class="section-nav-btn" data-section="s2">🧳 Travel Adaptation</button>
+  <button class="section-nav-btn" data-section="s3">🍽️ Food Intelligence</button>
+  <button class="section-nav-btn" data-section="s4">⚙️ Health Conditions</button>
+  <button class="section-nav-btn" data-section="s5">🧰 Travel Tools</button>
+</nav>
+
+<!-- SECTION 1 -->
+<div class="section-page active" id="s1">
+<nav class="phase-nav">
+  <button class="phase-btn active" data-phase="menstrual">🔴 Menstrual</button>
+  <button class="phase-btn" data-phase="follicular">🟠 Follicular</button>
+  <button class="phase-btn" data-phase="ovulation">🟢 Ovulation</button>
+  <button class="phase-btn" data-phase="luteal">🟣 Luteal</button>
+</nav>
+
+<div class="main">
+
+  <!-- ===== MENSTRUAL ===== -->
+  <div class="phase-panel active" id="panel-menstrual">
+    <div class="phase-hero menstrual">
+      <div class="days-range">Days 1–5 · Menstrual Phase</div>
+      <h2>Rest. Bleed. Survive.</h2>
+      <p class="summary">Your body is doing heavy work. Energy dips, pain may peak on Days 1–2. This is not the time to push — it's the time to protect your reserves and adapt your environment to your needs.</p>
+    </div>
+
+    <div class="grid-3">
+      <div class="card">
+        <h3>Energy & Mood</h3>
+        <div class="bar-label">Energy Level</div>
+        <div class="bar-track"><div class="bar-fill" style="width:20%; background:var(--menstrual)"></div></div>
+        <div class="bar-label">Pain Risk</div>
+        <div class="bar-track"><div class="bar-fill" style="width:80%; background:#e74c3c"></div></div>
+        <div class="bar-label">Mental Clarity</div>
+        <div class="bar-track"><div class="bar-fill" style="width:30%; background:#aaa"></div></div>
+        <div style="margin-top:14px">
+          <span class="mood-tag" style="background:var(--menstrual-soft);color:var(--menstrual)">Withdrawn</span>
+          <span class="mood-tag" style="background:var(--menstrual-soft);color:var(--menstrual)">Sensitive</span>
+          <span class="mood-tag" style="background:var(--menstrual-soft);color:var(--menstrual)">Inward</span>
+          <span class="mood-tag" style="background:var(--menstrual-soft);color:var(--menstrual)">Irritable</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>What to Prioritize</h3>
+        <div class="priority-item"><span class="priority-icon">🛏️</span><span>Maximize rest — short naps are fine</span></div>
+        <div class="priority-item"><span class="priority-icon">💊</span><span>Take pain relief early — don't wait for it to peak</span></div>
+        <div class="priority-item"><span class="priority-icon">🚫</span><span>Postpone major decisions or confrontations</span></div>
+        <div class="priority-item"><span class="priority-icon">🍵</span><span>Warm food, warm liquids, warm compress</span></div>
+        <div class="priority-item"><span class="priority-icon">📵</span><span>Reduce social obligations — protect your energy</span></div>
+      </div>
+
+      <div class="card">
+        <h3>Travel Difficulty</h3>
+        <div class="travel-badge" style="background:var(--menstrual-soft);color:var(--menstrual)">🔴 High Difficulty</div>
+        <ul class="travel-tips">
+          <li>Carry double the supplies you think you need</li>
+          <li>Book aisle seats for bathroom access</li>
+          <li>Map bathrooms at transit points in advance</li>
+          <li>Pack a small heating patch for cramps</li>
+          <li>Avoid long overnight travel on Day 1–2 if possible</li>
+          <li>Wear dark, comfortable, loose clothing</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:24px">
+      <h2 class="section-title">Alternate-Day Guidance</h2>
+      <div class="day-tabs">
+        <button class="day-tab active" data-day="m1">Day 1</button>
+        <button class="day-tab" data-day="m2">Day 2</button>
+        <button class="day-tab" data-day="m3">Day 3</button>
+        <button class="day-tab" data-day="m4">Day 4</button>
+        <button class="day-tab" data-day="m5">Day 5</button>
+      </div>
+      <div class="day-content active" id="m1">
+        <div class="day-tip-card">
+          <h4>Day 1 — The Crash</h4>
+          <p>Flow starts. Cramps may be at their worst. Prostaglandins peak, causing pain and sometimes nausea or loose stools.</p>
+          <ul>
+            <li>Take ibuprofen/mefenamic acid <em>before</em> pain spikes if possible</li>
+            <li>Eat something light before meds — avoid empty stomach</li>
+            <li>Cancel non-essential plans without guilt</li>
+            <li>Low activity only: walking around the house is enough</li>
+          </ul>
+        </div>
+      </div>
+      <div class="day-content" id="m2">
+        <div class="day-tip-card">
+          <h4>Day 2 — Peak Flow</h4>
+          <p>Typically the heaviest flow day. Energy is still low but pain may begin to ease slightly toward evening.</p>
+          <ul>
+            <li>Change products more frequently — don't wait for leaks</li>
+            <li>Iron-rich foods: lentils, spinach, jaggery, red meat if accessible</li>
+            <li>Stay hydrated — bleeding increases fluid loss</li>
+            <li>Light stretching or yoga if tolerable; no intense cardio</li>
+          </ul>
+        </div>
+      </div>
+      <div class="day-content" id="m3">
+        <div class="day-tip-card">
+          <h4>Day 3 — Turning Point</h4>
+          <p>Flow begins to lighten for most. A small energy uptick may appear. The fog lifts slightly.</p>
+          <ul>
+            <li>This is a good day to tackle one small, manageable task</li>
+            <li>Gentle walks outside can help mood</li>
+            <li>Start reintroducing social contact if you want it</li>
+            <li>Reflect or journal — your mind is more receptive now</li>
+          </ul>
+        </div>
+      </div>
+      <div class="day-content" id="m4">
+        <div class="day-tip-card">
+          <h4>Day 4 — Recovery Mode</h4>
+          <p>Light flow or spotting. Energy slowly returning. This is a transition day — don't overcommit yet.</p>
+          <ul>
+            <li>You may feel better — resist the urge to overdo it</li>
+            <li>Plan your next week while in a calmer headspace</li>
+            <li>Light exercise is now well-tolerated</li>
+            <li>Focus on rebuilding nutrition — eat well today</li>
+          </ul>
+        </div>
+      </div>
+      <div class="day-content" id="m5">
+        <div class="day-tip-card">
+          <h4>Day 5 — Emerging</h4>
+          <p>For most, flow ends or nearly ends. Estrogen begins to rise. Energy and motivation start climbing.</p>
+          <ul>
+            <li>Great day to make plans for the upcoming follicular phase</li>
+            <li>Start light workouts — body is ready</li>
+            <li>Social energy is returning — reconnect if you pulled away</li>
+            <li>Mood generally lifts significantly today</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== FOLLICULAR ===== -->
+  <div class="phase-panel" id="panel-follicular">
+    <div class="phase-hero follicular">
+      <div class="days-range">Days 6–13 · Follicular Phase</div>
+      <h2>Rise. Plan. Begin.</h2>
+      <p class="summary">Estrogen climbs steadily. Your energy, optimism, and mental clarity improve day by day. This is your window for starting things — projects, conversations, adventures. Use it intentionally.</p>
+    </div>
+
+    <div class="grid-3">
+      <div class="card">
+        <h3>Energy & Mood</h3>
+        <div class="bar-label">Energy Level</div>
+        <div class="bar-track"><div class="bar-fill" style="width:65%; background:var(--follicular)"></div></div>
+        <div class="bar-label">Pain Risk</div>
+        <div class="bar-track"><div class="bar-fill" style="width:15%; background:#e74c3c"></div></div>
+        <div class="bar-label">Mental Clarity</div>
+        <div class="bar-track"><div class="bar-fill" style="width:75%; background:var(--follicular)"></div></div>
+        <div style="margin-top:14px">
+          <span class="mood-tag" style="background:var(--follicular-soft);color:var(--follicular)">Optimistic</span>
+          <span class="mood-tag" style="background:var(--follicular-soft);color:var(--follicular)">Curious</span>
+          <span class="mood-tag" style="background:var(--follicular-soft);color:var(--follicular)">Motivated</span>
+          <span class="mood-tag" style="background:var(--follicular-soft);color:var(--follicular)">Social</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>What to Prioritize</h3>
+        <div class="priority-item"><span class="priority-icon">📋</span><span>Start new projects — energy supports initiation</span></div>
+        <div class="priority-item"><span class="priority-icon">🤝</span><span>Schedule important meetings or pitches</span></div>
+        <div class="priority-item"><span class="priority-icon">🏃</span><span>Increase workout intensity progressively</span></div>
+        <div class="priority-item"><span class="priority-icon">🧠</span><span>Learn new skills — brain absorbs easily now</span></div>
+        <div class="priority-item"><span class="priority-icon">🌱</span><span>Set goals for the rest of the cycle</span></div>
+      </div>
+
+      <div class="card">
+        <h3>Travel Difficulty</h3>
+        <div class="travel-badge" style="background:var(--follicular-soft);color:var(--follicular)">🟡 Low-Medium</div>
+        <ul class="travel-tips">
+          <li>Good phase for travel — energy is building</li>
+          <li>Try new foods with lower risk of GI upset</li>
+          <li>Spontaneous detours are fine — flexibility is high</li>
+          <li>Pack lighter — you don't need as many comfort items</li>
+          <li>Good time for walking tours or active itineraries</li>
+          <li>Watch iron levels if you bled heavily last phase</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:24px">
+      <h2 class="section-title">Alternate-Day Guidance</h2>
+      <div class="day-tabs">
+        <button class="day-tab active" data-day="f6">Day 6</button>
+        <button class="day-tab" data-day="f8">Day 8</button>
+        <button class="day-tab" data-day="f10">Day 10</button>
+        <button class="day-tab" data-day="f12">Day 12</button>
+      </div>
+      <div class="day-content active" id="f6">
+        <div class="day-tip-card">
+          <h4>Day 6 — Fresh Start</h4>
+          <p>The menstrual phase is behind you. Estrogen is rising and you'll likely notice improved mood and lighter feelings.</p>
+          <ul>
+            <li>Do a gentle reset: tidy space, plan the week</li>
+            <li>Restock your nutrition after period losses</li>
+            <li>Start any creative or professional project you've been putting off</li>
+          </ul>
+        </div>
+      </div>
+      <div class="day-content" id="f8">
+        <div class="day-tip-card">
+          <h4>Day 8 — Building Momentum</h4>
+          <p>Energy is noticeably better. Skin often clears. You may feel more confident and articulate.</p>
+          <ul>
+            <li>Great day for difficult conversations or negotiations</li>
+            <li>Increase workout intensity — body handles it well</li>
+            <li>Good day to reach out to people you've been avoiding</li>
+          </ul>
+        </div>
+      </div>
+      <div class="day-content" id="f10">
+        <div class="day-tip-card">
+          <h4>Day 10 — Peak Follicular</h4>
+          <p>Near-peak estrogen. You likely feel your most focused and socially switched-on.</p>
+          <ul>
+            <li>Book important presentations or interviews for this window</li>
+            <li>Social energy is high — great for group activities</li>
+            <li>Physically, you may hit personal bests in workouts</li>
+          </ul>
+        </div>
+      </div>
+      <div class="day-content" id="f12">
+        <div class="day-tip-card">
+          <h4>Day 12 — Pre-Ovulation</h4>
+          <p>Estrogen at or near its peak. LH surge beginning. You may notice increased libido and confidence.</p>
+          <ul>
+            <li>Capture your best work — write, create, produce</li>
+            <li>If tracking fertility, this window matters</li>
+            <li>Transition mindset: ovulation approaches, pace yourself</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== OVULATION ===== -->
+  <div class="phase-panel" id="panel-ovulation">
+    <div class="phase-hero ovulation">
+      <div class="days-range">Days 14–16 · Ovulation Phase</div>
+      <h2>Peak. Connect. Express.</h2>
+      <p class="summary">A short but powerful window. Energy, communication skills, and confidence peak. Your voice carries more; your presence is stronger. Short-lived — use it deliberately.</p>
+    </div>
+
+    <div class="grid-3">
+      <div class="card">
+        <h3>Energy & Mood</h3>
+        <div class="bar-label">Energy Level</div>
+        <div class="bar-track"><div class="bar-fill" style="width:90%; background:var(--ovulation)"></div></div>
+        <div class="bar-label">Pain Risk</div>
+        <div class="bar-track"><div class="bar-fill" style="width:25%; background:#e74c3c"></div></div>
+        <div class="bar-label">Mental Clarity</div>
+        <div class="bar-track"><div class="bar-fill" style="width:90%; background:var(--ovulation)"></div></div>
+        <div style="margin-top:14px">
+          <span class="mood-tag" style="background:var(--ovulation-soft);color:var(--ovulation)">Confident</span>
+          <span class="mood-tag" style="background:var(--ovulation-soft);color:var(--ovulation)">Expressive</span>
+          <span class="mood-tag" style="background:var(--ovulation-soft);color:var(--ovulation)">Magnetic</span>
+          <span class="mood-tag" style="background:var(--ovulation-soft);color:var(--ovulation)">Warm</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>What to Prioritize</h3>
+        <div class="priority-item"><span class="priority-icon">🎤</span><span>Public speaking, pitches, presentations</span></div>
+        <div class="priority-item"><span class="priority-icon">💬</span><span>Difficult conversations — you're most articulate</span></div>
+        <div class="priority-item"><span class="priority-icon">🎉</span><span>Social events — your energy is contagious</span></div>
+        <div class="priority-item"><span class="priority-icon">💪</span><span>High-intensity workouts — your peak window</span></div>
+        <div class="priority-item"><span class="priority-icon">⚠️</span><span>Note: joints may be looser — warm up properly</span></div>
+      </div>
+
+      <div class="card">
+        <h3>Travel Difficulty</h3>
+        <div class="travel-badge" style="background:var(--ovulation-soft);color:var(--ovulation)">🟢 Low Difficulty</div>
+        <ul class="travel-tips">
+          <li>Best phase for travel — high adaptability</li>
+          <li>Can handle disrupted schedules better</li>
+          <li>Some may notice mild mid-cycle spotting — normal</li>
+          <li>Mild cramping (Mittelschmerz) possible on one side</li>
+          <li>Great phase for adventure or physically active travel</li>
+          <li>Note increased libido when making social travel plans</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:24px">
+      <h2 class="section-title">Alternate-Day Guidance</h2>
+      <div class="day-tabs">
+        <button class="day-tab active" data-day="o14">Day 14</button>
+        <button class="day-tab" data-day="o15">Day 15</button>
+        <button class="day-tab" data-day="o16">Day 16</button>
+      </div>
+      <div class="day-content active" id="o14">
+        <div class="day-tip-card">
+          <h4>Day 14 — Ovulation Day</h4>
+          <p>LH surge triggers egg release. Peak hormonal output. Many people feel "electric" today.</p>
+          <ul>
+            <li>Use this energy for something meaningful — don't waste it on passive scrolling</li>
+            <li>One-on-one conversations tend to go very well today</li>
+            <li>Physically, you're at your strongest — good for strength training</li>
+          </ul>
+        </div>
+      </div>
+      <div class="day-content" id="o15">
+        <div class="day-tip-card">
+          <h4>Day 15 — Post-Peak Glow</h4>
+          <p>Egg has been released. Progesterone begins rising. The glow continues but a subtle shift is coming.</p>
+          <ul>
+            <li>Capture momentum from yesterday — continue important work</li>
+            <li>Begin winding down intense social calendar slightly</li>
+            <li>Good day for creative or collaborative work</li>
+          </ul>
+        </div>
+      </div>
+      <div class="day-content" id="o16">
+        <div class="day-tip-card">
+          <h4>Day 16 — Transition</h4>
+          <p>Progesterone rising more noticeably. Energy may plateau. This is the bridge into the Luteal phase.</p>
+          <ul>
+            <li>Start preparing for a slower pace ahead</li>
+            <li>Good day to organize, systematize, plan ahead</li>
+            <li>Don't over-schedule the coming week — you'll thank yourself</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== LUTEAL ===== -->
+  <div class="phase-panel" id="panel-luteal">
+    <div class="phase-hero luteal">
+      <div class="days-range">Days 17–28 · Luteal Phase</div>
+      <h2>Slow. Complete. Inward.</h2>
+      <p class="summary">Progesterone dominates. Energy gradually declines. Detail-orientation and nesting instincts increase. PMS symptoms may appear in Days 24–28. This phase rewards structure, completion, and self-compassion.</p>
+    </div>
+
+    <div class="grid-3">
+      <div class="card">
+        <h3>Energy & Mood</h3>
+        <div class="bar-label">Energy Level</div>
+        <div class="bar-track"><div class="bar-fill" style="width:45%; background:var(--luteal)"></div></div>
+        <div class="bar-label">PMS Risk (late luteal)</div>
+        <div class="bar-track"><div class="bar-fill" style="width:70%; background:#e74c3c"></div></div>
+        <div class="bar-label">Detail Focus</div>
+        <div class="bar-track"><div class="bar-fill" style="width:80%; background:var(--luteal)"></div></div>
+        <div style="margin-top:14px">
+          <span class="mood-tag" style="background:var(--luteal-soft);color:var(--luteal)">Focused</span>
+          <span class="mood-tag" style="background:var(--luteal-soft);color:var(--luteal)">Methodical</span>
+          <span class="mood-tag" style="background:var(--luteal-soft);color:var(--luteal)">Sensitive</span>
+          <span class="mood-tag" style="background:var(--luteal-soft);color:var(--luteal)">Nesting</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>What to Prioritize</h3>
+        <div class="priority-item"><span class="priority-icon">✅</span><span>Finish tasks — detail work comes naturally</span></div>
+        <div class="priority-item"><span class="priority-icon">🏠</span><span>Home, comfort, routines — lean into nesting</span></div>
+        <div class="priority-item"><span class="priority-icon">📉</span><span>Reduce social commitments in late luteal</span></div>
+        <div class="priority-item"><span class="priority-icon">🥗</span><span>Complex carbs help stabilize mood (oats, rice)</span></div>
+        <div class="priority-item"><span class="priority-icon">🧘</span><span>Prioritize sleep — progesterone makes you drowsy</span></div>
+      </div>
+
+      <div class="card">
+        <h3>Travel Difficulty</h3>
+        <div class="travel-badge" style="background:var(--luteal-soft);color:var(--luteal)">🟠 Medium-High</div>
+        <ul class="travel-tips">
+          <li>Early luteal (Days 17–20): manageable travel</li>
+          <li>Late luteal (Days 24+): minimize travel stress</li>
+          <li>Bloating may affect clothing comfort — dress loosely</li>
+          <li>Bring snacks — hunger spikes and food cravings increase</li>
+          <li>Emotional sensitivity is higher — plan buffer time</li>
+          <li>Sleep disruption hits harder this phase — prioritize rest</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:24px">
+      <h2 class="section-title">Alternate-Day Guidance</h2>
+      <div class="day-tabs">
+        <button class="day-tab active" data-day="l17">Day 17</button>
+        <button class="day-tab" data-day="l19">Day 19</button>
+        <button class="day-tab" data-day="l21">Day 21</button>
+        <button class="day-tab" data-day="l24">Day 24</button>
+        <button class="day-tab" data-day="l27">Day 27</button>
+      </div>
+      <div class="day-content active" id="l17">
+        <div class="day-tip-card">
+          <h4>Day 17 — Early Luteal</h4>
+          <p>Progesterone rising. Energy still decent. Mood may feel slightly calmer and more inward-focused.</p>
+          <ul>
+            <li>Wrap up open loops from the ovulation phase</li>
+            <li>Good for administrative tasks, editing, and reviewing</li>
+            <li>Begin meal prepping if possible — cravings will increase</li>
+          </ul>
+        </div>
+      </div>
+      <div class="day-content" id="l19">
+        <div class="day-tip-card">
+          <h4>Day 19 — Settling In</h4>
+          <p>Progesterone continues rising. You may prefer solitude or smaller groups over large social events.</p>
+          <ul>
+            <li>Good for deep, focused work — fewer distractions tolerated</li>
+            <li>Start scaling back evening commitments</li>
+            <li>Yoga, walking, swimming over high-intensity training</li>
+          </ul>
+        </div>
+      </div>
+      <div class="day-content" id="l21">
+        <div class="day-tip-card">
+          <h4>Day 21 — Mid Luteal</h4>
+          <p>Progesterone peaks. Some may notice breast tenderness, bloating, or increased appetite starting here.</p>
+          <ul>
+            <li>Don't skip meals — blood sugar instability worsens PMS</li>
+            <li>Reduce caffeine and sodium if bloating is an issue</li>
+            <li>Notice emotional patterns — don't react to everything</li>
+          </ul>
+        </div>
+      </div>
+      <div class="day-content" id="l24">
+        <div class="day-tip-card">
+          <h4>Day 24 — PMS Window Begins</h4>
+          <p>Progesterone starts dropping if no pregnancy. For many, this is when PMS symptoms emerge or worsen.</p>
+          <ul>
+            <li>Be extra patient with yourself and others</li>
+            <li>Avoid scheduling high-stakes situations if possible</li>
+            <li>Magnesium, B6, and complex carbs can ease symptoms</li>
+            <li>Track symptoms to understand your patterns over time</li>
+          </ul>
+        </div>
+      </div>
+      <div class="day-content" id="l27">
+        <div class="day-tip-card">
+          <h4>Day 27 — Pre-Menstrual</h4>
+          <p>Final days before menstruation. Hormones drop sharply. Cramping, mood dips, and fatigue often peak now.</p>
+          <ul>
+            <li>Prepare your period supplies now — don't get caught off-guard</li>
+            <li>Rest as much as possible — tomorrow's phase needs your reserves</li>
+            <li>Comfort, warmth, and low-demand activities only</li>
+            <li>It's okay to feel this hard — it's hormonal, not permanent</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /main -->
+</div><!-- /s1 -->
+
+<!-- SECTION 2: TRAVEL ADAPTATION -->
+<div class="section-page" id="s2">
+
+  <div class="travel-mode-tabs">
+    <button class="tm-btn active" data-mode="train">🚂 Train</button>
+    <button class="tm-btn" data-mode="bus">🚌 Bus</button>
+    <button class="tm-btn" data-mode="flight">✈️ Flight</button>
+    <button class="tm-btn" data-mode="backpack">🎒 Backpacking</button>
+    <button class="tm-btn" data-mode="hostel">🏠 Hostel vs Hotel</button>
+  </div>
+
+  <!-- TRAIN -->
+  <div class="travel-panel active" id="mode-train">
+    <div class="travel-hero" style="background:#EAF4FB; border-left: 5px solid #2980B9;">
+      <div class="icon-big">🚂</div>
+      <div>
+        <h2>Long Train Journeys</h2>
+        <p>Hours on a train can feel very different depending on your cycle phase. Overnight trains, limited bathrooms, and rigid seating demand specific planning — especially on heavy flow days.</p>
+      </div>
+    </div>
+    <div class="difficulty-row">
+      <span class="diff-pill" style="background:#FADBD8;color:#C0392B">🔴 Menstrual: Plan heavily</span>
+      <span class="diff-pill" style="background:#FDEBD0;color:#E67E22">🟠 Luteal: Moderate prep</span>
+      <span class="diff-pill" style="background:#D5F5E3;color:#27AE60">🟢 Follicular/Ovulation: Manageable</span>
+    </div>
+    <div class="tip-grid">
+      <div class="tip-block">
+        <h3>🚿 Hygiene Strategies</h3>
+        <ul>
+          <li>Bring a zip pouch with supplies — don't dig through bags in tiny bathrooms</li>
+          <li>Period underwear as a backup layer for overnight trains</li>
+          <li>Carry biodegradable wet wipes for quick freshening up</li>
+          <li>Change products before boarding, not mid-journey when possible</li>
+          <li>Pack a small spray deodorant — trains get warm and sweaty</li>
+          <li>Keep one clean outfit accessible in your bag, not buried</li>
+        </ul>
+      </div>
+      <div class="tip-block">
+        <h3>🚻 Bathroom Planning</h3>
+        <ul>
+          <li>Book seats near the toilet — check the train map when booking</li>
+          <li>Go at stations — train bathrooms are often locked or unusable mid-journey</li>
+          <li>Note which car has the cleanest toilet early in the journey</li>
+          <li>Use a menstrual cup on very long routes to reduce bathroom trips</li>
+          <li>Carry a small bag to dispose of products — bins are often missing</li>
+        </ul>
+      </div>
+      <div class="tip-block">
+        <h3>💊 Pain Management</h3>
+        <ul>
+          <li>Take pain meds 30 min before boarding if Day 1–2</li>
+          <li>Stick-on heat patches (Moov, ThermaCare) are ideal — hands-free</li>
+          <li>Book a window seat — leaning helps; aisle gets bumped constantly</li>
+          <li>Walk the aisle every 1–2 hours — movement eases cramping</li>
+          <li>Avoid cold drinks — warm water or herbal tea if available</li>
+        </ul>
+      </div>
+      <div class="tip-block">
+        <h3>😴 Sleep Hacks</h3>
+        <ul>
+          <li>Bring an eye mask and earplugs — non-negotiable on overnight trains</li>
+          <li>A small travel pillow for your lower back reduces cramp discomfort</li>
+          <li>Book a lower berth if possible — climbing is harder on heavy flow days</li>
+          <li>Wear loose pants or a comfortable wrap — avoid waistbands that press</li>
+          <li>Keep pain meds accessible at night — don't wait for pain to wake you fully</li>
+        </ul>
+      </div>
+      <div class="tip-block">
+        <h3>🔒 Safety Tips</h3>
+        <ul>
+          <li>Keep your bag close when going to the toilet — don't leave valuables exposed</li>
+          <li>Tell a travel companion your phase if you need more bathroom/stop time</li>
+          <li>Avoid sleeping on top berths alone in mixed compartments if uncomfortable</li>
+          <li>Trust your gut — discomfort from cramps vs. unsafe situations feel different</li>
+          <li>Have your accommodation address saved offline before boarding</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- BUS -->
+  <div class="travel-panel" id="mode-bus">
+    <div class="travel-hero" style="background:#FEF9E7; border-left: 5px solid #F1C40F;">
+      <div class="icon-big">🚌</div>
+      <div>
+        <h2>Bus Travel</h2>
+        <p>Bus travel is often the most budget-accessible but the most physically uncomfortable option — bumpy roads, no guaranteed bathroom stops, cramped seats. Preparation makes it bearable.</p>
+      </div>
+    </div>
+    <div class="difficulty-row">
+      <span class="diff-pill" style="background:#FADBD8;color:#C0392B">🔴 Menstrual: Hardest mode</span>
+      <span class="diff-pill" style="background:#FDEBD0;color:#E67E22">🟠 Luteal: Challenging</span>
+      <span class="diff-pill" style="background:#D5F5E3;color:#27AE60">🟢 Follicular: Most tolerable</span>
+    </div>
+    <div class="tip-grid">
+      <div class="tip-block">
+        <h3>🚿 Hygiene Strategies</h3>
+        <ul>
+          <li>Use your highest-capacity product before boarding — no mid-ride changes</li>
+          <li>Double up: tampon or cup + period underwear as backup</li>
+          <li>Bring sealed bags for used products — bus stops rarely have bins</li>
+          <li>Hand sanitizer is essential — bus stop bathrooms are often unsanitary</li>
+          <li>Compressed travel towels for quick wipe-downs at stops</li>
+        </ul>
+      </div>
+      <div class="tip-block">
+        <h3>🚻 Bathroom Planning</h3>
+        <ul>
+          <li>Ask driver or research: when and where are the scheduled stops?</li>
+          <li>Go at every stop regardless of urgency — next one may be 3+ hours away</li>
+          <li>Sit near the front — easier to ask for emergency stops</li>
+          <li>Reduce liquid intake 1 hour before boarding if bathroom access is uncertain</li>
+          <li>Carry small change for paid public toilets at stops</li>
+        </ul>
+      </div>
+      <div class="tip-block">
+        <h3>💊 Pain Management</h3>
+        <ul>
+          <li>Bumpy roads worsen cramps — time pain meds to last the journey</li>
+          <li>Sit near the middle of the bus — less road vibration than the back</li>
+          <li>Heat patches applied before boarding; they last 8–12 hours</li>
+          <li>Ginger chews or peppermint help with nausea from motion + cramps</li>
+          <li>Tense and release leg muscles to maintain circulation on long rides</li>
+        </ul>
+      </div>
+      <div class="tip-block">
+        <h3>😴 Sleep Hacks</h3>
+        <ul>
+          <li>Neck pillow is essential — bus seats offer no head support</li>
+          <li>Noise-cancelling earphones or foam plugs for engine noise</li>
+          <li>Bring a light blanket or shawl — overnight buses are often over-AC'd</li>
+          <li>Aisle seat for easier movement but window seat for leaning — choose based on phase</li>
+          <li>Avoid screens if prone to motion sickness; audiobooks or music instead</li>
+        </ul>
+      </div>
+      <div class="tip-block">
+        <h3>🔒 Safety Tips</h3>
+        <ul>
+          <li>Keep your period bag inside your main bag, not in overhead bins</li>
+          <li>Inform a co-traveler if you're feeling faint or unwell</li>
+          <li>On overnight buses, lock your bag to the seat frame if possible</li>
+          <li>Know the route and major stops — don't rely solely on driver announcements</li>
+          <li>If you feel unsafe, trust that feeling — ask to be dropped at a busy area</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- FLIGHT -->
+  <div class="travel-panel" id="mode-flight">
+    <div class="travel-hero" style="background:#EAF4FB; border-left: 5px solid #1ABC9C;">
+      <div class="icon-big">✈️</div>
+      <div>
+        <h2>Flights & Jet Lag</h2>
+        <p>Altitude, cabin pressure, time zone shifts, and recycled air all interact with your cycle. Jet lag can throw off your period entirely. Here's how to manage in the air and on landing.</p>
+      </div>
+    </div>
+    <div class="difficulty-row">
+      <span class="diff-pill" style="background:#FADBD8;color:#C0392B">🔴 Menstrual: High management</span>
+      <span class="diff-pill" style="background:#E8DAEF;color:#8E44AD">🟣 Luteal: Bloating + jet lag</span>
+      <span class="diff-pill" style="background:#D5F5E3;color:#27AE60">🟢 Follicular: Easiest to fly</span>
+    </div>
+    <div class="tip-grid">
+      <div class="tip-block">
+        <h3>🚿 Hygiene Strategies</h3>
+        <ul>
+          <li>Cabin air is extremely dry — stay hydrated to prevent irritation and odor</li>
+          <li>Change products in the airport before boarding, not on the plane</li>
+          <li>Pack supplies in your personal item bag, not checked luggage</li>
+          <li>Menstrual cup or disc is ideal for flights — fewer changes needed</li>
+          <li>Unscented wipes for freshening up in tiny airplane bathrooms</li>
+          <li>Compression socks help circulation, especially on Day 1–2</li>
+        </ul>
+      </div>
+      <div class="tip-block">
+        <h3>🚻 Bathroom Planning</h3>
+        <ul>
+          <li>Book an aisle seat for bathroom access without climbing over people</li>
+          <li>Go right when the seatbelt sign turns off — lines build fast</li>
+          <li>Bring supplies in a small pouch in your pocket or front bag</li>
+          <li>Dispose in the bin inside the bathroom — do not flush pads or cups</li>
+          <li>On long-haul flights, plan to change every 4–5 hours minimum</li>
+        </ul>
+      </div>
+      <div class="tip-block">
+        <h3>💊 Pain Management</h3>
+        <ul>
+          <li>Altitude can worsen bloating — avoid carbonated drinks and salty snacks</li>
+          <li>Take ibuprofen before takeoff if you're in a pain-heavy phase</li>
+          <li>Heat patches work at altitude — apply before boarding</li>
+          <li>Walk the aisle every 1–2 hours — deep vein thrombosis risk rises during menstruation</li>
+          <li>Avoid alcohol — it worsens cramps, dehydration, and jet lag</li>
+        </ul>
+      </div>
+      <div class="tip-block">
+        <h3>😴 Sleep & Jet Lag</h3>
+        <ul>
+          <li>Jet lag can delay or advance your next period by 3–7 days — track this</li>
+          <li>Melatonin (0.5–1mg) helps reset circadian rhythm after crossing time zones</li>
+          <li>Sleep during the destination's nighttime, not departure city's</li>
+          <li>On landing, get natural sunlight immediately to anchor your new rhythm</li>
+          <li>Don't nap for more than 20 min on arrival day — push through to local bedtime</li>
+          <li>Luteal phase + jet lag = mood crash; give yourself grace and eat well</li>
+        </ul>
+      </div>
+      <div class="tip-block">
+        <h3>🔒 Safety Tips</h3>
+        <ul>
+          <li>Keep medications in carry-on — never check essential pain meds</li>
+          <li>Know the medical term for your condition if you have PCOS or endometriosis</li>
+          <li>Period products must be in your carry-on for security access</li>
+          <li>Inform cabin crew if you feel faint or unwell — they are trained to help</li>
+          <li>Have travel health insurance that covers gynecological emergencies</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- BACKPACKING -->
+  <div class="travel-panel" id="mode-backpack">
+    <div class="travel-hero" style="background:#EAFAF1; border-left: 5px solid #27AE60;">
+      <div class="icon-big">🎒</div>
+      <div>
+        <h2>Backpacking</h2>
+        <p>Backpacking means inconsistent access to bathrooms, pharmacies, and comfort. Weight limits, unpredictable terrain, and shared accommodation demand a lean but comprehensive period kit.</p>
+      </div>
+    </div>
+    <div class="difficulty-row">
+      <span class="diff-pill" style="background:#FADBD8;color:#C0392B">🔴 Menstrual Days 1–2: Hardest</span>
+      <span class="diff-pill" style="background:#FDEBD0;color:#E67E22">🟠 Luteal: Plan for PMS flares</span>
+      <span class="diff-pill" style="background:#D5F5E3;color:#27AE60">🟢 Follicular/Ovulation: Best for big days</span>
+    </div>
+    <div class="tip-grid">
+      <div class="tip-block">
+        <h3>🚿 Hygiene Strategies</h3>
+        <ul>
+          <li>Menstrual cup or disc: reusable, lightweight, no waste problem — best for backpacking</li>
+          <li>Period underwear as the only backup you need with a cup</li>
+          <li>Sterilize your cup with boiling water whenever possible; use Milton tablets when not</li>
+          <li>Bar soap for washing hands works better than liquid on a packed trip</li>
+          <li>Biodegradable wipes — use sparingly and pack out your waste</li>
+          <li>Quick-dry underwear dries overnight — two pairs is enough with daily washing</li>
+        </ul>
+      </div>
+      <div class="tip-block">
+        <h3>🚻 Bathroom Planning</h3>
+        <ul>
+          <li>Research bathroom access along your planned route before you leave</li>
+          <li>In remote areas: learn Leave No Trace period waste disposal rules</li>
+          <li>Carry a trowel for wilderness hygiene if camping</li>
+          <li>Use a pee cloth (Kula Cloth or similar) to reduce TP waste</li>
+          <li>Pack a small LED torch for nighttime bathroom trips at campsites</li>
+        </ul>
+      </div>
+      <div class="tip-block">
+        <h3>💊 Pain Management</h3>
+        <ul>
+          <li>Carry ibuprofen and a backup painkiller — pharmacies may be far</li>
+          <li>Physical activity from hiking actually reduces cramp intensity over time</li>
+          <li>On bad pain days: reduce pack weight, slow pace, don't hero through it</li>
+          <li>TENS devices (small ones) are surprisingly packable and effective</li>
+          <li>Magnesium supplementation daily reduces cramp severity over the cycle</li>
+        </ul>
+      </div>
+      <div class="tip-block">
+        <h3>😴 Sleep Hacks</h3>
+        <ul>
+          <li>Dark period underwear under your sleep layer — worry-free nights</li>
+          <li>Sleep on your side with knees slightly bent to ease cramp pressure</li>
+          <li>A small heat pack (chemical, single-use) in your sleeping bag for bad nights</li>
+          <li>Earplugs — hostels, campsites, and guesthouses are never fully quiet</li>
+          <li>Track your cycle in advance so you can plan tent vs. hostel nights accordingly</li>
+        </ul>
+      </div>
+      <div class="tip-block">
+        <h3>🔒 Safety Tips</h3>
+        <ul>
+          <li>Know where the nearest pharmacy or clinic is at each stop</li>
+          <li>Always carry a 3-day supply of period products beyond what you expect to need</li>
+          <li>Tell your travel buddy your cycle phase — they can help you on hard days</li>
+          <li>Don't attempt high-difficulty hikes on Day 1–2 if you have heavy flow</li>
+          <li>In areas with wildlife, store used products in sealed bags away from your sleeping area</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- HOSTEL vs HOTEL -->
+  <div class="travel-panel" id="mode-hostel">
+    <div class="travel-hero" style="background:#F4ECF7; border-left: 5px solid #8E44AD;">
+      <div class="icon-big">🏠</div>
+      <div>
+        <h2>Hostel vs Hotel</h2>
+        <p>Shared bathrooms, mixed dorms, and thin walls are a different world from a private hotel room. Both are manageable — but need different approaches depending on your phase and needs.</p>
+      </div>
+    </div>
+
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom:16px;">
+      <div style="background:#f9f9f9; border-radius:14px; padding:18px; border-top: 3px solid #8E44AD;">
+        <h3 style="font-size:0.9rem; font-weight:700; margin-bottom:12px; color:#8E44AD;">🏨 Hostel Realities</h3>
+        <div class="tip-block" style="box-shadow:none; padding:0; background:transparent;">
+          <ul>
+            <li>Shared bathrooms mean you can't guarantee availability — always have backup products on you</li>
+            <li>Dorm settings: keep your period kit in a discreet but accessible pouch</li>
+            <li>Menstrual phase in a dorm = rough. Book a private room for Days 1–2 if budget allows</li>
+            <li>Communal fridges: don't store medication there — keep it with you</li>
+            <li>Night trips to shared bathrooms: wear slippers and keep a small torch handy</li>
+            <li>Other travelers are not your enemy — most people understand, but privacy still matters</li>
+          </ul>
+        </div>
+      </div>
+      <div style="background:#f9f9f9; border-radius:14px; padding:18px; border-top: 3px solid #2980B9;">
+        <h3 style="font-size:0.9rem; font-weight:700; margin-bottom:12px; color:#2980B9;">🏩 Hotel Advantages</h3>
+        <div class="tip-block" style="box-shadow:none; padding:0; background:transparent;">
+          <ul>
+            <li>Private bathroom = significantly better for heavy flow days</li>
+            <li>Request extra towels at check-in — useful for comfort and warmth</li>
+            <li>Many hotels have hot water bottles on request — ask at the front desk</li>
+            <li>Room service or delivery saves you going out on bad pain days</li>
+            <li>If you leak on sheets, inform housekeeping early — they've seen it before and are trained for it</li>
+            <li>Use the "Do Not Disturb" sign aggressively on your rest days</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="tip-grid">
+      <div class="tip-block">
+        <h3>💡 Hostel Survival Kit</h3>
+        <ul>
+          <li>Period pouch that clips to your wrist for bathroom runs</li>
+          <li>Small zip-lock bags for discrete disposal</li>
+          <li>Flip flops (mandatory for shared showers)</li>
+          <li>Mini padlock for your locker — keep products secured</li>
+          <li>Ear plugs + eye mask for sleeping in dorms during cramp-heavy nights</li>
+        </ul>
+      </div>
+      <div class="tip-block">
+        <h3>💡 Budget Hotel Hacks</h3>
+        <ul>
+          <li>Book refundable rooms around your expected menstrual days when possible</li>
+          <li>Dark towels/cloths from home for heavy nights — don't ruin hotel linens</li>
+          <li>Kettle in the room = hot water bottle with a fabric cover for cramp relief</li>
+          <li>Use hotel laundry or sink-wash period underwear overnight</li>
+          <li>Check if hotel has a pharmacy nearby before you arrive</li>
+        </ul>
+      </div>
+      <div class="tip-block">
+        <h3>😴 Sleep in Both Settings</h3>
+        <ul>
+          <li>Hostel: top bunk on heavy days = risky. Request bottom bunk at check-in</li>
+          <li>Hotel: ask for extra blankets — warmth helps cramps significantly</li>
+          <li>Both: travel sheet or sleep sack protects you and the bedding</li>
+          <li>Period underwear under pyjamas = peace of mind for uninterrupted sleep</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /s2 -->
+
+<!-- SECTION 3: FOOD INTELLIGENCE -->
+<div class="section-page" id="s3">
+  <div class="food-layout">
+    <div class="food-sidebar">
+      <div class="food-sidebar-label">By Phase</div>
+      <button class="food-phase-btn active" data-fphase="menstrual">🔴 Menstrual</button>
+      <button class="food-phase-btn" data-fphase="follicular">🟠 Follicular</button>
+      <button class="food-phase-btn" data-fphase="ovulation">🟢 Ovulation</button>
+      <button class="food-phase-btn" data-fphase="luteal">🟣 Luteal</button>
+      <div class="venue-divider">By Venue</div>
+      <button class="food-venue-btn active" data-venue="all">📋 Overview</button>
+      <button class="food-venue-btn" data-venue="railway">🚉 Railway Station</button>
+      <button class="food-venue-btn" data-venue="roadside">🛺 Roadside</button>
+      <button class="food-venue-btn" data-venue="cafe">☕ Cafés</button>
+      <button class="food-venue-btn" data-venue="bakery">🥐 Bakeries</button>
+      <button class="food-venue-btn" data-venue="hostel">🍳 Hostel Kitchen</button>
+    </div>
+    <div class="food-main">
+
+      <!-- MENSTRUAL ALL -->
+      <div class="food-panel active" id="fp-menstrual-all">
+        <div class="food-hero-bar" style="background:var(--menstrual-soft);border-left:4px solid var(--menstrual)">
+          <div style="font-size:2rem">🔴</div>
+          <div><h2>Menstrual Phase — Food Guide</h2><p>Iron loss is real. Inflammation is high. Your gut is sensitive. Eat warm, eat dense, eat often. This is not the time to eat light.</p></div>
+        </div>
+        <div class="food-grid">
+          <div class="food-card"><h3>✓ Prefer</h3><ul>
+            <li class="prefer-li">Lentil soups, dal, rajma — iron + protein</li>
+            <li class="prefer-li">Jaggery in warm water or milk — iron without nausea</li>
+            <li class="prefer-li">Bananas — potassium eases cramping muscles</li>
+            <li class="prefer-li">Rice porridge / khichdi — easy on the gut</li>
+            <li class="prefer-li">Ginger tea / warm lemon water — anti-inflammatory</li>
+            <li class="prefer-li">Dark leafy greens (palak, methi) — replenish iron</li>
+            <li class="prefer-li">Eggs — easily digestible protein</li>
+            <li class="prefer-li">Oats with banana — slow carbs + magnesium</li>
+          </ul></div>
+          <div class="food-card"><h3>✗ Avoid</h3><ul>
+            <li class="avoid-li">Fried foods — worsen prostaglandin inflammation</li>
+            <li class="avoid-li">Salty chips / processed snacks — increase bloating</li>
+            <li class="avoid-li">Caffeine — constricts blood vessels, worsens cramps</li>
+            <li class="avoid-li">Cold drinks / ice cream — can intensify cramping</li>
+            <li class="avoid-li">Refined sugar — energy spike then crash</li>
+            <li class="avoid-li">Alcohol — dehydrates, worsens inflammation</li>
+          </ul></div>
+          <div class="food-card"><h3>→ Why It Helps</h3><ul>
+            <li class="why-li">Iron-rich foods counter blood loss and fatigue</li>
+            <li class="why-li">Magnesium (bananas, oats) relaxes uterine muscles</li>
+            <li class="why-li">Warm foods keep the gut relaxed — cold triggers spasms</li>
+            <li class="why-li">Ginger has proven anti-inflammatory action on period pain</li>
+            <li class="why-li">Complex carbs sustain energy without blood sugar spikes</li>
+          </ul></div>
+          <div class="food-card"><h3>₹ Cheap Finds</h3><ul>
+            <li class="cheap-li">Dal chawal (₹30–60) — iron, protein, carbs in one</li>
+            <li class="cheap-li">Boiled egg from any stall (₹10–15)</li>
+            <li class="cheap-li">Banana bunch (₹20–30 for 6)</li>
+            <li class="cheap-li">Jaggery block (₹10) — dissolve in tea</li>
+            <li class="cheap-li">Peanut packet (₹10) — magnesium + healthy fats</li>
+          </ul></div>
+        </div>
+        <div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);font-weight:600;margin-bottom:12px;">By Venue — Menstrual</div>
+        <div class="food-full-card"><div class="venue-header">🚉 Railway Station</div><ul style="list-style:none;padding:0">
+          <li class="prefer-li" style="font-size:.84rem;padding:5px 0;border-bottom:1px solid #f3f3f3">Idli sambar, khichdi, boiled egg</li>
+          <li class="prefer-li" style="font-size:.84rem;padding:5px 0;border-bottom:1px solid #f3f3f3">Sabudana khichdi — light and warm</li>
+          <li class="avoid-li" style="font-size:.84rem;padding:5px 0">Kachori, samosa, oily fried snacks</li>
+        </ul></div>
+        <div class="food-full-card"><div class="venue-header">🛺 Roadside</div><ul style="list-style:none;padding:0">
+          <li class="prefer-li" style="font-size:.84rem;padding:5px 0;border-bottom:1px solid #f3f3f3">Pongal, upma, poha — gut-friendly</li>
+          <li class="prefer-li" style="font-size:.84rem;padding:5px 0;border-bottom:1px solid #f3f3f3">Adrak chai — anti-inflammatory</li>
+          <li class="avoid-li" style="font-size:.84rem;padding:5px 0">Bhajias, pakoras — inflammation triggers</li>
+        </ul></div>
+        <div class="food-full-card"><div class="venue-header">☕ Café / 🥐 Bakery</div><ul style="list-style:none;padding:0">
+          <li class="prefer-li" style="font-size:.84rem;padding:5px 0;border-bottom:1px solid #f3f3f3">Herbal or masala tea, oatmeal, egg toast</li>
+          <li class="prefer-li" style="font-size:.84rem;padding:5px 0;border-bottom:1px solid #f3f3f3">Whole grain bread + peanut butter</li>
+          <li class="avoid-li" style="font-size:.84rem;padding:5px 0">Cold brew, cappuccinos, sugary pastries</li>
+        </ul></div>
+        <div class="food-full-card"><div class="venue-header">🍳 Hostel Kitchen</div><ul style="list-style:none;padding:0">
+          <li class="prefer-li" style="font-size:.84rem;padding:5px 0;border-bottom:1px solid #f3f3f3">Boil eggs + instant oats — 10-min iron + magnesium meal</li>
+          <li class="prefer-li" style="font-size:.84rem;padding:5px 0;border-bottom:1px solid #f3f3f3">Canned lentil soup packet — heat and eat</li>
+          <li class="cheap-li" style="font-size:.84rem;padding:5px 0">Survival kit: peanut butter jar + jaggery block + oats</li>
+        </ul></div>
+      </div>
+
+      <!-- FOLLICULAR ALL -->
+      <div class="food-panel" id="fp-follicular-all">
+        <div class="food-hero-bar" style="background:var(--follicular-soft);border-left:4px solid var(--follicular)">
+          <div style="font-size:2rem">🟠</div>
+          <div><h2>Follicular Phase — Food Guide</h2><p>Estrogen rising. Your gut is resilient, metabolism active. Focus on building: protein, fermented foods, fresh vegetables. This is your easiest phase to eat well.</p></div>
+        </div>
+        <div class="food-grid">
+          <div class="food-card"><h3>✓ Prefer</h3><ul>
+            <li class="prefer-li">Fermented foods — curd, idli, dosa, kanji</li>
+            <li class="prefer-li">Sprouts and legumes — high plant protein</li>
+            <li class="prefer-li">Fresh vegetables and salads</li>
+            <li class="prefer-li">Eggs, paneer, chicken — rebuild after period loss</li>
+            <li class="prefer-li">Flaxseeds — phytoestrogens support estrogen rise</li>
+            <li class="prefer-li">Green tea — mild caffeine OK now</li>
+            <li class="prefer-li">Nuts and seeds — zinc and selenium</li>
+          </ul></div>
+          <div class="food-card"><h3>✗ Avoid</h3><ul>
+            <li class="avoid-li">Excess sugar — disrupts hormonal rise</li>
+            <li class="avoid-li">Ultra-processed snacks — kill gut flora rebuild</li>
+            <li class="avoid-li">Skipping meals — your metabolism is high, feed it</li>
+          </ul></div>
+          <div class="food-card"><h3>→ Why It Helps</h3><ul>
+            <li class="why-li">Fermented foods replenish gut bacteria lost during menstruation</li>
+            <li class="why-li">Zinc supports follicle development and estrogen signaling</li>
+            <li class="why-li">Flaxseeds bind excess estrogen metabolites</li>
+            <li class="why-li">Higher protein intake supports muscle gains of this phase</li>
+          </ul></div>
+          <div class="food-card"><h3>₹ Cheap Finds</h3><ul>
+            <li class="cheap-li">Curd / lassi (₹15–30) — cheap probiotic everywhere</li>
+            <li class="cheap-li">Sprout cup (₹15) — easiest street protein</li>
+            <li class="cheap-li">Egg bhurji + roti (₹30–50)</li>
+            <li class="cheap-li">Moong dal chilla from roadside carts</li>
+            <li class="cheap-li">Mixed nuts packet (₹20–30)</li>
+          </ul></div>
+        </div>
+        <div class="food-full-card"><div class="venue-header">All Venues — Follicular Picks</div><ul style="list-style:none;padding:0">
+          <li class="prefer-li" style="font-size:.84rem;padding:5px 0;border-bottom:1px solid #f3f3f3">Railway: Curd rice, masala chaas, dosa where available</li>
+          <li class="prefer-li" style="font-size:.84rem;padding:5px 0;border-bottom:1px solid #f3f3f3">Roadside: Sprout bhel, egg rolls, chana chaat, coconut water</li>
+          <li class="prefer-li" style="font-size:.84rem;padding:5px 0;border-bottom:1px solid #f3f3f3">Café: Green tea, egg sandwich, yogurt parfait</li>
+          <li class="prefer-li" style="font-size:.84rem;padding:5px 0;border-bottom:1px solid #f3f3f3">Bakery: Seeded bread, multigrain rolls, nut bars</li>
+          <li class="prefer-li" style="font-size:.84rem;padding:5px 0;border-bottom:1px solid #f3f3f3">Hostel: Scrambled eggs + canned beans + veg stir-fry</li>
+          <li class="cheap-li" style="font-size:.84rem;padding:5px 0">Buy eggs + lentils + curd for the week — covers the whole phase for ₹150–200</li>
+        </ul></div>
+      </div>
+
+      <!-- OVULATION ALL -->
+      <div class="food-panel" id="fp-ovulation-all">
+        <div class="food-hero-bar" style="background:var(--ovulation-soft);border-left:4px solid var(--ovulation)">
+          <div style="font-size:2rem">🟢</div>
+          <div><h2>Ovulation Phase — Food Guide</h2><p>Peak hormonal output. Antioxidants and anti-inflammatory foods protect this window. Light, fresh, colorful. Easiest phase for diverse eating.</p></div>
+        </div>
+        <div class="food-grid">
+          <div class="food-card"><h3>✓ Prefer</h3><ul>
+            <li class="prefer-li">Raw or lightly cooked vegetables</li>
+            <li class="prefer-li">Berries, pomegranate, citrus — Vitamin C</li>
+            <li class="prefer-li">Flaxseeds, sardines — omega-3 protects egg quality</li>
+            <li class="prefer-li">Fibre-rich foods — metabolize estrogen efficiently</li>
+            <li class="prefer-li">Watermelon, cucumber — hydration</li>
+            <li class="prefer-li">Turmeric — anti-inflammatory</li>
+          </ul></div>
+          <div class="food-card"><h3>✗ Avoid</h3><ul>
+            <li class="avoid-li">Excess red meat — estrogen dominance risk</li>
+            <li class="avoid-li">Refined carbs + sugar — disrupts LH surge</li>
+            <li class="avoid-li">Alcohol — impairs egg release</li>
+            <li class="avoid-li">Excess processed soy</li>
+          </ul></div>
+          <div class="food-card"><h3>→ Why It Helps</h3><ul>
+            <li class="why-li">Vitamin C aids follicle rupture and egg release</li>
+            <li class="why-li">Omega-3s reduce inflammation around the follicle</li>
+            <li class="why-li">Fibre moves excess estrogen out via digestion</li>
+            <li class="why-li">Hydration keeps cervical fluid healthy</li>
+          </ul></div>
+          <div class="food-card"><h3>₹ Cheap Finds</h3><ul>
+            <li class="cheap-li">Seasonal fruit chaat (₹20–40)</li>
+            <li class="cheap-li">Coconut water (₹20–30)</li>
+            <li class="cheap-li">Haldi doodh / turmeric milk (₹15–20)</li>
+            <li class="cheap-li">Canned sardines (₹30–50)</li>
+            <li class="cheap-li">Watermelon slice from vendor (₹10–20)</li>
+          </ul></div>
+        </div>
+        <div class="food-full-card"><div class="venue-header">All Venues — Ovulation Picks</div><ul style="list-style:none;padding:0">
+          <li class="prefer-li" style="font-size:.84rem;padding:5px 0;border-bottom:1px solid #f3f3f3">Railway: Fresh fruit, coconut water, light salad boxes</li>
+          <li class="prefer-li" style="font-size:.84rem;padding:5px 0;border-bottom:1px solid #f3f3f3">Roadside: Fruit chaat, cucumber with lime, sugarcane juice</li>
+          <li class="prefer-li" style="font-size:.84rem;padding:5px 0;border-bottom:1px solid #f3f3f3">Café: Smoothies, grain bowls, salads — your best café phase</li>
+          <li class="prefer-li" style="font-size:.84rem;padding:5px 0;border-bottom:1px solid #f3f3f3">Bakery: Seeded crackers, nut bars, fruit tarts (no cream)</li>
+          <li class="prefer-li" style="font-size:.84rem;padding:5px 0">Hostel: Tuna/sardine pasta + veg stir-fry with turmeric</li>
+        </ul></div>
+      </div>
+
+      <!-- LUTEAL ALL -->
+      <div class="food-panel" id="fp-luteal-all">
+        <div class="food-hero-bar" style="background:var(--luteal-soft);border-left:4px solid var(--luteal)">
+          <div style="font-size:2rem">🟣</div>
+          <div><h2>Luteal Phase — Food Guide</h2><p>Progesterone dominant. Cravings spike, blood sugar swings harder. Goal: steady energy, craving management, and PMS damage control through food.</p></div>
+        </div>
+        <div class="food-grid">
+          <div class="food-card"><h3>✓ Prefer</h3><ul>
+            <li class="prefer-li">Complex carbs — sweet potato, oats, brown rice</li>
+            <li class="prefer-li">Dark chocolate 70%+ — magnesium + mood</li>
+            <li class="prefer-li">Pumpkin seeds — highest magnesium source</li>
+            <li class="prefer-li">Legumes — fibre clears progesterone metabolites</li>
+            <li class="prefer-li">Curd, ragi, sesame — calcium reduces PMS</li>
+            <li class="prefer-li">Banana, chickpeas — B6 fights mood dips</li>
+            <li class="prefer-li">Warm soups — comfort + nutrition</li>
+          </ul></div>
+          <div class="food-card"><h3>✗ Avoid</h3><ul>
+            <li class="avoid-li">Salty foods — worsen water retention significantly</li>
+            <li class="avoid-li">Refined sugar — worsens mood crashes</li>
+            <li class="avoid-li">Caffeine after 2pm — worsens luteal insomnia</li>
+            <li class="avoid-li">Alcohol — progesterone + alcohol = next-day depression</li>
+            <li class="avoid-li">Cold drinks — worsens bloating</li>
+          </ul></div>
+          <div class="food-card"><h3>→ Why It Helps</h3><ul>
+            <li class="why-li">Magnesium reduces PMS symptoms by up to 40%</li>
+            <li class="why-li">Calcium + Vitamin D reduces mood-related PMS (clinical evidence)</li>
+            <li class="why-li">B6 is a serotonin cofactor — directly improves mood</li>
+            <li class="why-li">Complex carbs raise serotonin — your cravings have a reason</li>
+            <li class="why-li">Fibre clears excess progesterone and prevents bloating</li>
+          </ul></div>
+          <div class="food-card"><h3>₹ Cheap Finds</h3><ul>
+            <li class="cheap-li">Banana daily (₹5–8)</li>
+            <li class="cheap-li">Ragi roti or mudde (₹20–30) — best calcium grain</li>
+            <li class="cheap-li">Pumpkin seeds (₹30 small packet)</li>
+            <li class="cheap-li">Rajma / chole (₹40–60)</li>
+            <li class="cheap-li">Dark chocolate bar 100g (₹50–80) — lasts the whole phase</li>
+          </ul></div>
+        </div>
+        <div class="food-full-card"><div class="venue-header">All Venues — Luteal Picks</div><ul style="list-style:none;padding:0">
+          <li class="prefer-li" style="font-size:.84rem;padding:5px 0;border-bottom:1px solid #f3f3f3">Railway: Rajma chawal, banana, peanut chikki (jaggery + peanuts)</li>
+          <li class="avoid-li" style="font-size:.84rem;padding:5px 0;border-bottom:1px solid #f3f3f3">Railway: Namkeen, bhujia, salted chips — immediate bloating</li>
+          <li class="prefer-li" style="font-size:.84rem;padding:5px 0;border-bottom:1px solid #f3f3f3">Roadside: Sweet potato chaat, warm corn on the cob, banana</li>
+          <li class="prefer-li" style="font-size:.84rem;padding:5px 0;border-bottom:1px solid #f3f3f3">Café: Decaf oat latte, banana bread, whole grain sandwich</li>
+          <li class="prefer-li" style="font-size:.84rem;padding:5px 0;border-bottom:1px solid #f3f3f3">Bakery: Dark bread, oat cookies, small dark chocolate</li>
+          <li class="prefer-li" style="font-size:.84rem;padding:5px 0;border-bottom:1px solid #f3f3f3">Hostel: Cook a big pot of chole on Day 22 — eat across 2 days</li>
+          <li class="cheap-li" style="font-size:.84rem;padding:5px 0">Hostel hack: Chole + rice for 2 days ≈ ₹80–120 total</li>
+        </ul></div>
+      </div>
+
+      <!-- VENUE: RAILWAY (all phases) -->
+      <div class="food-panel" id="fp-menstrual-railway">
+        <div class="food-hero-bar" style="background:#EAF4FB;border-left:4px solid #2980B9"><div style="font-size:2rem">🚉</div><div><h2>Railway Station × All Phases</h2><p>Station food is hot, cheap, and available 24/7. Know what to pick and what to skip.</p></div></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+          <div class="food-card"><h3>🔴 Menstrual</h3><ul><li class="prefer-li">Idli sambar, khichdi, boiled egg</li><li class="avoid-li">Kachori, samosa, fried snacks</li><li class="cheap-li">Dal chawal ≈ ₹40–60</li></ul></div>
+          <div class="food-card"><h3>🟠 Follicular</h3><ul><li class="prefer-li">Curd rice, masala chaas, dosa</li><li class="prefer-li">Boiled egg + fruit combo</li><li class="cheap-li">Chaas ≈ ₹15–20</li></ul></div>
+          <div class="food-card"><h3>🟢 Ovulation</h3><ul><li class="prefer-li">Fresh fruit, coconut water, salad box</li><li class="avoid-li">Heavy curries, cream dishes</li><li class="cheap-li">Coconut water ≈ ₹25–35</li></ul></div>
+          <div class="food-card"><h3>🟣 Luteal</h3><ul><li class="prefer-li">Rajma chawal, banana, peanut chikki</li><li class="avoid-li">Namkeen, salty bhujia, chips</li><li class="cheap-li">Chikki ≈ ₹10–20</li></ul></div>
+        </div>
+      </div>
+
+      <!-- VENUE: ROADSIDE -->
+      <div class="food-panel" id="fp-menstrual-roadside">
+        <div class="food-hero-bar" style="background:#FEF9E7;border-left:4px solid #F39C12"><div style="font-size:2rem">🛺</div><div><h2>Roadside Eateries × All Phases</h2><p>Most affordable and accessible. Street food is not your enemy — know what to order.</p></div></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+          <div class="food-card"><h3>🔴 Menstrual</h3><ul><li class="prefer-li">Adrak chai, pongal, upma, poha</li><li class="avoid-li">Bhajias, pakoras, oily curries</li><li class="cheap-li">Pongal ≈ ₹20–30</li></ul></div>
+          <div class="food-card"><h3>🟠 Follicular</h3><ul><li class="prefer-li">Sprout chaat, egg roll, chana</li><li class="prefer-li">Coconut water, fresh lime soda</li><li class="cheap-li">Sprout chaat ≈ ₹20</li></ul></div>
+          <div class="food-card"><h3>🟢 Ovulation</h3><ul><li class="prefer-li">Fruit chaat, sugarcane juice, cucumber + lime</li><li class="avoid-li">Excess fried street food</li><li class="cheap-li">Fruit chaat ≈ ₹20–40</li></ul></div>
+          <div class="food-card"><h3>🟣 Luteal</h3><ul><li class="prefer-li">Sweet potato chaat, warm corn, banana</li><li class="avoid-li">Salted chips, fried namkeen</li><li class="cheap-li">Corn ≈ ₹15–25</li></ul></div>
+        </div>
+      </div>
+
+      <!-- VENUE: CAFE -->
+      <div class="food-panel" id="fp-menstrual-cafe">
+        <div class="food-hero-bar" style="background:#EAFAF1;border-left:4px solid #1ABC9C"><div style="font-size:2rem">☕</div><div><h2>Small Cafés × All Phases</h2><p>More menu flexibility than you'd expect. Know the orders that work for your cycle.</p></div></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+          <div class="food-card"><h3>🔴 Menstrual</h3><ul><li class="prefer-li">Herbal tea, masala chai, oatmeal, egg toast</li><li class="avoid-li">Espresso, cold brew, sugary drinks</li></ul></div>
+          <div class="food-card"><h3>🟠 Follicular</h3><ul><li class="prefer-li">Green tea, egg sandwich, yogurt parfait</li><li class="prefer-li">Any protein-forward item on the menu</li></ul></div>
+          <div class="food-card"><h3>🟢 Ovulation</h3><ul><li class="prefer-li">Smoothies, grain bowls, salads, fresh juice</li><li class="avoid-li">Cream-heavy items, excess sugar</li></ul></div>
+          <div class="food-card"><h3>🟣 Luteal</h3><ul><li class="prefer-li">Decaf oat latte, banana bread, whole grain sandwich</li><li class="avoid-li">Afternoon caffeine — worsens luteal insomnia</li></ul></div>
+        </div>
+      </div>
+
+      <!-- VENUE: BAKERY -->
+      <div class="food-panel" id="fp-menstrual-bakery">
+        <div class="food-hero-bar" style="background:#FDF2F8;border-left:4px solid #E91E8C"><div style="font-size:2rem">🥐</div><div><h2>Bakeries × All Phases</h2><p>Often the only option in transit zones. Navigate them smartly across your cycle.</p></div></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+          <div class="food-card"><h3>🔴 Menstrual</h3><ul><li class="prefer-li">Whole grain bread, oat biscuits, banana bread</li><li class="avoid-li">Croissants, cream pastries — pro-inflammatory</li><li class="cheap-li">Plain bread roll ≈ ₹10–15</li></ul></div>
+          <div class="food-card"><h3>🟠 Follicular</h3><ul><li class="prefer-li">Seeded bread, multigrain rolls, nut bars</li><li class="prefer-li">Egg-based items if available</li></ul></div>
+          <div class="food-card"><h3>🟢 Ovulation</h3><ul><li class="prefer-li">Seeded crackers, fruit tarts (no cream), nut bars</li><li class="avoid-li">Heavy cream pastries, sugary buns</li></ul></div>
+          <div class="food-card"><h3>🟣 Luteal</h3><ul><li class="prefer-li">Dark bread, oat cookies, small dark chocolate</li><li class="avoid-li">Salty pretzels, cheese-heavy items — bloating</li></ul></div>
+        </div>
+      </div>
+
+      <!-- VENUE: HOSTEL -->
+      <div class="food-panel" id="fp-menstrual-hostel">
+        <div class="food-hero-bar" style="background:#F4ECF7;border-left:4px solid #8E44AD"><div style="font-size:2rem">🍳</div><div><h2>Hostel Kitchen × All Phases</h2><p>Your biggest advantage as a budget traveler. Even a basic kitchen gives you enormous cycle nutrition control.</p></div></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+          <div class="food-card"><h3>🔴 Menstrual</h3><ul><li class="prefer-li">Instant oats + banana + peanut butter</li><li class="prefer-li">Boiled eggs + canned lentil soup</li><li class="cheap-li">Full day nutrition ≈ ₹60–80</li></ul></div>
+          <div class="food-card"><h3>🟠 Follicular</h3><ul><li class="prefer-li">Scrambled eggs + beans + sautéed veg</li><li class="prefer-li">Curd with seeds + fruit</li><li class="cheap-li">Week groceries: eggs+lentils+curd ≈ ₹150–200</li></ul></div>
+          <div class="food-card"><h3>🟢 Ovulation</h3><ul><li class="prefer-li">Tuna or sardine pasta + lots of veg</li><li class="prefer-li">Stir-fry with turmeric, garlic, greens</li><li class="cheap-li">Canned tuna + pasta ≈ ₹60–80</li></ul></div>
+          <div class="food-card"><h3>🟣 Luteal</h3><ul><li class="prefer-li">Chickpea curry + rice — cook a big batch</li><li class="prefer-li">Oatmeal + banana + dark chocolate shavings</li><li class="cheap-li">Chole + rice for 2 days ≈ ₹80–120</li></ul></div>
+        </div>
+        <div class="food-full-card" style="margin-top:14px">
+          <h3>🎒 The Traveller's Cycle Grocery List</h3>
+          <p style="font-size:.85rem;color:#555;margin-bottom:10px">These 10 items cover all 4 phases at minimal cost. Buy on arrival:</p>
+          <ul style="list-style:none;padding:0;display:grid;grid-template-columns:1fr 1fr;gap:4px">
+            <li class="cheap-li" style="font-size:.83rem;padding:4px 0">Oats (₹50–80/kg)</li>
+            <li class="cheap-li" style="font-size:.83rem;padding:4px 0">Eggs (₹60–80/dozen)</li>
+            <li class="cheap-li" style="font-size:.83rem;padding:4px 0">Bananas (₹20–30/6)</li>
+            <li class="cheap-li" style="font-size:.83rem;padding:4px 0">Peanut butter (₹80–120/jar)</li>
+            <li class="cheap-li" style="font-size:.83rem;padding:4px 0">Canned chickpeas (₹30–50)</li>
+            <li class="cheap-li" style="font-size:.83rem;padding:4px 0">Jaggery block (₹20–30)</li>
+            <li class="cheap-li" style="font-size:.83rem;padding:4px 0">Pumpkin seeds (₹30–50)</li>
+            <li class="cheap-li" style="font-size:.83rem;padding:4px 0">Dark chocolate 70%+ (₹60–80)</li>
+            <li class="cheap-li" style="font-size:.83rem;padding:4px 0">Curd / yogurt (₹20–40)</li>
+            <li class="cheap-li" style="font-size:.83rem;padding:4px 0">Fresh ginger (₹10)</li>
+          </ul>
+        </div>
+      </div>
+
+    </div><!-- /food-main -->
+  </div><!-- /food-layout -->
+</div><!-- /s3 -->
+
+<!-- SECTION 4: HEALTH CONDITIONS -->
+<div class="section-page" id="s4">
+  <div class="hc-page">
+
+    <div class="hc-intro">
+      <div class="icon">ℹ️</div>
+      <p><strong>This section gives lifestyle and dietary guidance based on common cycle-related experiences.</strong> It is not a diagnostic tool and does not replace medical advice. Think of this as a practical companion — not a prescription. Toggle one or more conditions that feel relevant to you.</p>
+    </div>
+
+    <div class="condition-toggles">
+      <button class="cond-toggle active" data-cond="pcos"><span class="toggle-dot"></span>PCOS / PCOD</button>
+      <button class="cond-toggle" data-cond="irregular"><span class="toggle-dot"></span>Irregular Cycles</button>
+      <button class="cond-toggle" data-cond="painful"><span class="toggle-dot"></span>Painful Periods</button>
+      <button class="cond-toggle" data-cond="heavy"><span class="toggle-dot"></span>Heavy Bleeding</button>
+      <button class="cond-toggle" data-cond="anemia"><span class="toggle-dot"></span>Anemia / Low Iron</button>
+      <button class="cond-toggle" data-cond="acne"><span class="toggle-dot"></span>Hormonal Acne</button>
+    </div>
+
+    <div class="hc-cards-area" id="hc-cards">
+
+      <!-- PCOS -->
+      <div class="hc-card" data-card="pcos">
+        <div class="hc-accent-bar" style="background: linear-gradient(90deg,#8E44AD,#C39BD3)"></div>
+        <div class="hc-card-header">
+          <div class="hc-card-icon">🔮</div>
+          <div>
+            <h2>PCOS / PCOD</h2>
+            <p>Polycystic ovary patterns often involve insulin resistance, androgen sensitivity, and irregular cycles. Most adaptations focus on blood sugar stability and inflammation reduction.</p>
+          </div>
+        </div>
+        <div class="hc-card-body">
+          <div class="hc-section diet">
+            <h4>🥗 Diet Modifications</h4>
+            <ul>
+              <li>Eat every 3–4 hours — never skip meals, blood sugar is the priority</li>
+              <li>Low-glycaemic index foods: oats, legumes, sweet potato, brown rice</li>
+              <li>Pair every carb with protein or fat to slow glucose absorption</li>
+              <li>Anti-inflammatory foods: turmeric, ginger, omega-3 rich fish/flaxseed</li>
+              <li>Spearmint tea daily — shown to mildly reduce androgen levels</li>
+              <li>Fermented foods to support gut-hormone axis</li>
+              <li>Inositol-rich foods: citrus, beans, nuts, cantaloupe</li>
+            </ul>
+          </div>
+          <div class="hc-section avoid">
+            <h4>🚫 Foods to Avoid</h4>
+            <ul>
+              <li>White bread, white rice, refined flour — rapid glucose spikes</li>
+              <li>Sugary drinks, packaged juices — worst insulin triggers</li>
+              <li>Dairy in excess — can increase androgen-related symptoms for some</li>
+              <li>Deep fried foods — worsen systemic inflammation</li>
+              <li>Alcohol — disrupts insulin sensitivity and liver detox of hormones</li>
+              <li>Artificial sweeteners — may worsen gut microbiome balance</li>
+            </ul>
+          </div>
+          <div class="hc-section travel">
+            <h4>✈️ Travel Warnings</h4>
+            <ul>
+              <li>Your period may arrive late or not at all — don't panic, carry supplies anyway</li>
+              <li>Jet lag and sleep disruption worsen insulin resistance — prioritise sleep</li>
+              <li>Airport and station food is often high-GI — carry your own snacks</li>
+              <li>Stress (travel-related) can delay ovulation further — build in rest days</li>
+              <li>Track symptoms rather than dates — cycle may shift significantly while travelling</li>
+            </ul>
+          </div>
+          <div class="hc-section energy">
+            <h4>⚡ Energy Management</h4>
+            <ul>
+              <li>Energy crashes are common — never go more than 4 hours without eating</li>
+              <li>Morning walk or light movement is more stabilising than intense workouts</li>
+              <li>Strength training 2–3x/week improves insulin sensitivity significantly</li>
+              <li>Avoid high-intensity exercise when you're exhausted — it raises cortisol</li>
+              <li>Power naps of 20 min are fine — longer naps can disrupt night sleep</li>
+              <li>Identify your 2–3 hour energy window and protect it for priority tasks</li>
+            </ul>
+          </div>
+          <div class="hc-section natural">
+            <h4>🌿 Natural Support</h4>
+            <ul>
+              <li>Spearmint tea (2 cups daily) — mild anti-androgen properties</li>
+              <li>Cinnamon in food — studied for improving insulin sensitivity</li>
+              <li>Seed cycling: flax + pumpkin in follicular, sesame + sunflower in luteal</li>
+              <li>Stress reduction is non-negotiable — cortisol directly worsens PCOS</li>
+              <li>Track your sleep — poor sleep is a major PCOS aggravator</li>
+              <li>Consistent mealtimes help regulate the hormonal rhythm</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- IRREGULAR CYCLES -->
+      <div class="hc-card hidden" data-card="irregular" style="display:none">
+        <div class="hc-accent-bar" style="background: linear-gradient(90deg,#E67E22,#F0B27A)"></div>
+        <div class="hc-card-header">
+          <div class="hc-card-icon">🌀</div>
+          <div>
+            <h2>Irregular Cycles</h2>
+            <p>Cycles outside the 21–35 day window, or those that vary widely month to month. Often linked to stress, sleep, under-eating, or hormonal transitions. Focus: regularity through lifestyle.</p>
+          </div>
+        </div>
+        <div class="hc-card-body">
+          <div class="hc-section diet">
+            <h4>🥗 Diet Modifications</h4>
+            <ul>
+              <li>Eat enough calories — undereating is a primary driver of irregular cycles</li>
+              <li>Healthy fats are essential for hormone production: nuts, olive oil, avocado, coconut</li>
+              <li>Zinc-rich foods support ovulation: pumpkin seeds, chickpeas, eggs</li>
+              <li>Vitamin B6 and B12: support cycle regularity (chicken, eggs, bananas)</li>
+              <li>Regular mealtimes signal safety to the body — eat at consistent hours</li>
+              <li>Seed cycling as a gentle hormone-rhythm practice</li>
+            </ul>
+          </div>
+          <div class="hc-section avoid">
+            <h4>🚫 Foods to Avoid</h4>
+            <ul>
+              <li>Crash dieting or skipping meals — tells your body reproduction is unsafe</li>
+              <li>Excess caffeine — elevates cortisol and disrupts the HPG axis</li>
+              <li>Alcohol — directly suppresses LH, which triggers ovulation</li>
+              <li>Very low-fat diets — hormones are made from fats; you need them</li>
+              <li>Ultra-processed food — disrupts gut microbiome that regulates estrogen</li>
+            </ul>
+          </div>
+          <div class="hc-section travel">
+            <h4>✈️ Travel Warnings</h4>
+            <ul>
+              <li>Always carry 7–10 days of supplies when travelling — never assume timing</li>
+              <li>Jet lag can delay your period by 5–14 days — keep tracking, not guessing</li>
+              <li>New time zones = new circadian rhythm = possible cycle shift</li>
+              <li>Track BBT or symptoms rather than calendar dates when abroad</li>
+              <li>High-stress travel periods may cause missed periods — rule out pregnancy first</li>
+            </ul>
+          </div>
+          <div class="hc-section energy">
+            <h4>⚡ Energy Management</h4>
+            <ul>
+              <li>Your energy won't follow a predictable pattern — don't plan around phases</li>
+              <li>Daily check-ins: how do you feel today? Adapt accordingly</li>
+              <li>Rest when you bleed, regardless of how unexpected the timing is</li>
+              <li>Build flexible work/travel structures — don't lock in intense plans too far ahead</li>
+              <li>Prioritise sleep consistently — it's the most powerful cycle regulator</li>
+            </ul>
+          </div>
+          <div class="hc-section natural">
+            <h4>🌿 Natural Support</h4>
+            <ul>
+              <li>Consistent sleep/wake times — the most underrated cycle regulator</li>
+              <li>Reduce high-intensity exercise if your cycle has recently become irregular</li>
+              <li>Seed cycling as a gentle rhythm tool across the month</li>
+              <li>Stress management practices: journaling, breathwork, or walks in nature</li>
+              <li>Ashwagandha (adaptogen) — may support stress-related cycle irregularity</li>
+              <li>Track symptoms in an app for 3+ months to spot your personal pattern</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- PAINFUL PERIODS -->
+      <div class="hc-card" data-card="painful" style="display:none">
+        <div class="hc-accent-bar" style="background: linear-gradient(90deg,#C0392B,#E88080)"></div>
+        <div class="hc-card-header">
+          <div class="hc-card-icon">🌡️</div>
+          <div>
+            <h2>Painful Periods</h2>
+            <p>Significant cramping, back pain, or nausea during menstruation. May be tied to prostaglandin levels, inflammation, or uterine sensitivity. Focus: reduce inflammation before and during.</p>
+          </div>
+        </div>
+        <div class="hc-card-body">
+          <div class="hc-section diet">
+            <h4>🥗 Diet Modifications</h4>
+            <ul>
+              <li>Start anti-inflammatory eating 3–5 days before your expected period</li>
+              <li>Omega-3 rich foods: fish, flaxseed, walnuts — reduce prostaglandin intensity</li>
+              <li>Magnesium daily in the week before: pumpkin seeds, dark chocolate, oats</li>
+              <li>Ginger — as potent as ibuprofen in some studies for period pain</li>
+              <li>Turmeric with black pepper — curcumin reduces prostaglandin production</li>
+              <li>Warm, easily digestible meals on Day 1–2: khichdi, soup, porridge</li>
+            </ul>
+          </div>
+          <div class="hc-section avoid">
+            <h4>🚫 Foods to Avoid</h4>
+            <ul>
+              <li>Fried and processed foods in the luteal phase — spike prostaglandins</li>
+              <li>Red meat (excess) — arachidonic acid raises inflammatory prostaglandins</li>
+              <li>Caffeine during period — constricts blood vessels, worsens cramping</li>
+              <li>Cold food and drinks on Day 1–2 — triggers muscle contractions</li>
+              <li>Salt — causes water retention that increases bloating and pressure</li>
+              <li>Alcohol — dehydrates and worsens pain perception</li>
+            </ul>
+          </div>
+          <div class="hc-section travel">
+            <h4>✈️ Travel Warnings</h4>
+            <ul>
+              <li>Never board a long journey on Day 1 without pain meds — take them preemptively</li>
+              <li>Stick-on heat patches are your most important travel item during period</li>
+              <li>Book aisle seats and flexible tickets around your expected Day 1–2</li>
+              <li>Research pharmacy availability at your destination before arriving</li>
+              <li>Carry your preferred painkiller brand — formulations vary by country</li>
+              <li>If pain is severe enough to affect walking, that day is a rest day — non-negotiable</li>
+            </ul>
+          </div>
+          <div class="hc-section energy">
+            <h4>⚡ Energy Management</h4>
+            <ul>
+              <li>Pain is exhausting — budget double the rest on Days 1–2</li>
+              <li>Don't push through severe pain — it's not strength, it's harm</li>
+              <li>Gentle movement (walking, stretching) is okay if pain is mild — not when severe</li>
+              <li>Eat small, frequent meals — nausea can make eating difficult</li>
+              <li>Warmth management: warm room, warm clothes, warm compress = lower pain</li>
+              <li>Pre-period: build up sleep and reduce load in the 3 days before expected start</li>
+            </ul>
+          </div>
+          <div class="hc-section natural">
+            <h4>🌿 Natural Support</h4>
+            <ul>
+              <li>Heat therapy — 40°C heat applied locally rivals ibuprofen in pain studies</li>
+              <li>Ginger tea (fresh grated) 3x daily from Day 1</li>
+              <li>Magnesium glycinate supplement from mid-luteal phase onward</li>
+              <li>Castor oil pack on the lower abdomen the week before — may reduce inflammation</li>
+              <li>Gentle yoga: child's pose, supine twist, cat-cow — specifically for cramps</li>
+              <li>TENS device (portable) — drug-free pain relief increasingly used for period pain</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- HEAVY BLEEDING -->
+      <div class="hc-card" data-card="heavy" style="display:none">
+        <div class="hc-accent-bar" style="background: linear-gradient(90deg,#2980B9,#85C1E9)"></div>
+        <div class="hc-card-header">
+          <div class="hc-card-icon">🩸</div>
+          <div>
+            <h2>Heavy Bleeding</h2>
+            <p>Soaking through a pad or tampon every 1–2 hours, or bleeding for more than 7 days. Heavy flow significantly increases iron loss and fatigue. Focus: replenishment, protection, pacing.</p>
+          </div>
+        </div>
+        <div class="hc-card-body">
+          <div class="hc-section diet">
+            <h4>🥗 Diet Modifications</h4>
+            <ul>
+              <li>Iron-rich foods every single day during your period: dal, palak, jaggery, red meat</li>
+              <li>Pair iron with Vitamin C for absorption: lime with dal, tomato with spinach</li>
+              <li>Vitamin K foods: leafy greens, broccoli — supports blood clotting</li>
+              <li>Stay aggressively hydrated — heavy bleeding increases fluid loss</li>
+              <li>Protein at every meal — your body is losing protein through blood</li>
+              <li>Don't skip meals even when nauseous — blood sugar crashes worsen fatigue</li>
+            </ul>
+          </div>
+          <div class="hc-section avoid">
+            <h4>🚫 Foods to Avoid</h4>
+            <ul>
+              <li>Alcohol — acts as a blood thinner, can worsen bleeding volume</li>
+              <li>Excess omega-6 (vegetable oils, processed snacks) — pro-inflammatory</li>
+              <li>Caffeine — constricts vessels but increases bleeding in some individuals</li>
+              <li>Very spicy food on heavy days — can irritate the gut alongside uterine activity</li>
+              <li>High sugar — worsens fatigue crashes during heavy blood loss</li>
+            </ul>
+          </div>
+          <div class="hc-section travel">
+            <h4>✈️ Travel Warnings</h4>
+            <ul>
+              <li>Double your product supply — always carry twice what you calculate needing</li>
+              <li>Menstrual disc or cup with high capacity are significantly better for heavy flow travel</li>
+              <li>Dark clothing on heavy days — functional, not fashionable, priority</li>
+              <li>Know where the closest bathroom is at all times — map it at each stop</li>
+              <li>Overnight transit on heavy flow days is high-risk — have a backup plan</li>
+              <li>If you feel faint or dizzy while travelling, stop immediately and eat + hydrate</li>
+            </ul>
+          </div>
+          <div class="hc-section energy">
+            <h4>⚡ Energy Management</h4>
+            <ul>
+              <li>Heavy bleeding = real blood loss = real fatigue — it's not in your head</li>
+              <li>Day 1–2 are rest days, full stop. Schedule nothing you can't cancel</li>
+              <li>Iron loss peaks on Day 2 — expect to feel worst around this time</li>
+              <li>Sit before you feel dizzy — stand up slowly from lying or sitting positions</li>
+              <li>Micro-rests every hour are more effective than one long rest later</li>
+              <li>Eat iron-rich food within the first hour of waking on heavy days</li>
+            </ul>
+          </div>
+          <div class="hc-section natural">
+            <h4>🌿 Natural Support</h4>
+            <ul>
+              <li>Raspberry leaf tea — traditionally used to tone uterine muscles and reduce heavy flow</li>
+              <li>Shepherd's purse (herb) — traditionally used to reduce excessive bleeding</li>
+              <li>Vitamin A (from food, not supplements): sweet potato, carrots — supports uterine lining health</li>
+              <li>Iron-rich bone broth — if you eat meat, this is the most bioavailable iron source</li>
+              <li>Track your product usage per day — helps you understand your actual flow volume</li>
+              <li>If you're consistently soaking through hourly, please consult a doctor — this is one area where lifestyle is not enough alone</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- ANEMIA -->
+      <div class="hc-card" data-card="anemia" style="display:none">
+        <div class="hc-accent-bar" style="background: linear-gradient(90deg,#27AE60,#82E0AA)"></div>
+        <div class="hc-card-header">
+          <div class="hc-card-icon">🩺</div>
+          <div>
+            <h2>Anemia / Low Iron</h2>
+            <p>Low hemoglobin from iron deficiency — common with heavy periods or low dietary iron intake. Symptoms include extreme fatigue, dizziness, brain fog, pale skin, breathlessness. Focus: constant replenishment.</p>
+          </div>
+        </div>
+        <div class="hc-card-body">
+          <div class="hc-section diet">
+            <h4>🥗 Diet Modifications</h4>
+            <ul>
+              <li>Iron at every meal — this is not optional during your period</li>
+              <li>Heme iron (most absorbable): red meat, chicken liver, eggs</li>
+              <li>Non-heme iron (plant): lentils, rajma, chana, palak, jaggery, tofu</li>
+              <li>Always eat iron with Vitamin C: lime juice on dal, tomato with spinach</li>
+              <li>Jaggery is your cheapest, most portable iron source — 1 small piece daily</li>
+              <li>Iron-fortified foods: some flours, cereals — check labels when travelling</li>
+              <li>Cook in a cast iron pan — small amounts of iron leach into food</li>
+            </ul>
+          </div>
+          <div class="hc-section avoid">
+            <h4>🚫 Foods to Avoid</h4>
+            <ul>
+              <li>Tea/coffee with meals — tannins block iron absorption by up to 60%</li>
+              <li>Calcium-rich foods at the same time as iron — calcium competes for absorption</li>
+              <li>Whole wheat bran in excess — phytates bind iron</li>
+              <li>Dairy with iron-rich meals — drink milk separately</li>
+              <li>High-oxalate foods (spinach in large amounts) — counterintuitive but oxalates bind iron</li>
+            </ul>
+          </div>
+          <div class="hc-section travel">
+            <h4>✈️ Travel Warnings</h4>
+            <ul>
+              <li>Dizziness is a real fainting risk — sit when you feel lightheaded, do not push through</li>
+              <li>Altitude travel worsens anemia symptoms — take it slower than usual</li>
+              <li>Long flights are exhausting for everyone, but brutal with anemia — build in recovery days</li>
+              <li>Always have a snack with iron on you — don't go hours without eating</li>
+              <li>Inform travel companions about your condition — they need to know if you collapse</li>
+              <li>Stairs, long walks with heavy bags — assess realistically. Ask for help.</li>
+            </ul>
+          </div>
+          <div class="hc-section energy">
+            <h4>⚡ Energy Management</h4>
+            <ul>
+              <li>Your fatigue is physiological, not motivational — iron deficiency literally starves your cells of oxygen</li>
+              <li>Plan the hardest tasks for mid-morning when possible — energy dips are sharper in afternoon</li>
+              <li>Short walks are better than no movement, but don't exhaust yourself</li>
+              <li>Sleep is curative — protect 8+ hours rigorously</li>
+              <li>Cold exposure worsens fatigue with anemia — stay warm</li>
+              <li>Track energy levels daily — you'll start to see when your iron is low before symptoms peak</li>
+            </ul>
+          </div>
+          <div class="hc-section natural">
+            <h4>🌿 Natural Support</h4>
+            <ul>
+              <li>Amla (Indian gooseberry) — highest natural Vitamin C source, dramatically boosts iron absorption</li>
+              <li>Jaggery + sesame laddoos — traditional iron + calcium combo that actually works</li>
+              <li>Moringa leaves (drumstick) — extremely high in iron, widely available in South Asia</li>
+              <li>Nettle tea — traditionally used to support iron levels</li>
+              <li>Cook with black sesame seeds — higher iron than white sesame</li>
+              <li>Beetroot juice — improves hemoglobin and blood oxygenation over time</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- HORMONAL ACNE -->
+      <div class="hc-card" data-card="acne" style="display:none">
+        <div class="hc-accent-bar" style="background: linear-gradient(90deg,#E91E8C,#F48FB1)"></div>
+        <div class="hc-card-header">
+          <div class="hc-card-icon">🌸</div>
+          <div>
+            <h2>Hormonal Acne</h2>
+            <p>Breakouts that follow a cycle pattern — typically appearing around the jaw, chin, and cheeks in the luteal phase or during menstruation. Driven by androgens and inflammation. Focus: internal + topical.</p>
+          </div>
+        </div>
+        <div class="hc-card-body">
+          <div class="hc-section diet">
+            <h4>🥗 Diet Modifications</h4>
+            <ul>
+              <li>Low-glycaemic diet is the single most impactful dietary change — cut white flour and sugar</li>
+              <li>Zinc daily: pumpkin seeds, chickpeas, eggs — zinc reduces sebum production</li>
+              <li>Omega-3 fatty acids: fish, flaxseed, walnuts — anti-inflammatory for skin</li>
+              <li>Probiotics: curd, kanji, fermented foods — gut-skin axis is real</li>
+              <li>Green tea (2 cups daily) — reduces androgens and inflammation</li>
+              <li>Colourful vegetables: antioxidants protect skin from internal inflammation</li>
+              <li>Water: hydration keeps skin cells functioning and toxins moving out</li>
+            </ul>
+          </div>
+          <div class="hc-section avoid">
+            <h4>🚫 Foods to Avoid</h4>
+            <ul>
+              <li>Dairy — whey and casein stimulate IGF-1 which raises sebum and androgens</li>
+              <li>High-glycaemic foods: white rice, bread, sugar — spike insulin which spikes androgens</li>
+              <li>Chocolate (milk or white) — sugar + dairy combo is a breakout trigger</li>
+              <li>Whey protein supplements — directly linked to hormonal acne in multiple studies</li>
+              <li>Junk food and fast food — trans fats worsen inflammatory acne</li>
+              <li>Iodine-heavy foods in excess: seaweed, excess iodised salt</li>
+            </ul>
+          </div>
+          <div class="hc-section travel">
+            <h4>✈️ Travel Warnings</h4>
+            <ul>
+              <li>Aeroplane air is extremely drying — use a non-comedogenic moisturiser in flight</li>
+              <li>Don't touch your face — harder to remember when you're tired from travel</li>
+              <li>Change your pillowcase frequently in hostels and hotels — bacteria and oil buildup</li>
+              <li>Hard water in different cities can trigger breakouts — rinse with filtered water if possible</li>
+              <li>Travel stress = cortisol spike = acne flare — manage it proactively</li>
+              <li>Pack travel-size salicylic acid or niacinamide — don't start new products while travelling</li>
+            </ul>
+          </div>
+          <div class="hc-section energy">
+            <h4>⚡ Energy Management</h4>
+            <ul>
+              <li>Breakouts hit self-esteem — acknowledge the emotional drain, it's real</li>
+              <li>Luteal phase is the highest acne-risk window — reduce other stressors then</li>
+              <li>Sleep deprivation worsens hormonal acne directly — 8 hours is skincare</li>
+              <li>High-intensity exercise is good for hormones, but sweat left on skin is not — cleanse after</li>
+              <li>Tracking breakout timing vs cycle days helps predict and prepare, not panic</li>
+            </ul>
+          </div>
+          <div class="hc-section natural">
+            <h4>🌿 Natural Support</h4>
+            <ul>
+              <li>Spearmint tea (2 cups daily) — studied for reducing androgens linked to hormonal acne</li>
+              <li>Zinc supplement or zinc-rich foods — one of the most evidenced natural acne interventions</li>
+              <li>Raw honey as a spot treatment — antibacterial, anti-inflammatory</li>
+              <li>Turmeric face mask (with yogurt) — reduces inflammation topically</li>
+              <li>Seed cycling — flax + pumpkin in follicular may reduce luteal androgen peaks</li>
+              <li>Consistent sleep and stress management — not optional, foundational</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- Empty state -->
+      <div class="hc-empty" id="hc-empty" style="display:none">
+        <div class="empty-icon">⚙️</div>
+        <h3>No conditions selected</h3>
+        <p>Toggle one or more conditions above to see personalised diet, travel, energy, and natural support guidance.</p>
+      </div>
+
+    </div><!-- /hc-cards-area -->
+  </div><!-- /hc-page -->
+</div><!-- /s4 -->
+
+
+
+
+<script>
+  // Section navigation
+  document.querySelectorAll('.section-nav-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.section-nav-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.section-page').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById(btn.dataset.section).classList.add('active');
+    });
+  });
+
+  // Phase switching (Section 1)
+  document.querySelectorAll('.phase-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.phase-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.phase-panel').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('panel-' + btn.dataset.phase).classList.add('active');
+    });
+  });
+
+  // Day tab switching (Section 1)
+  document.querySelectorAll('.day-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      const panel = tab.closest('.phase-panel');
+      panel.querySelectorAll('.day-tab').forEach(t => t.classList.remove('active'));
+      panel.querySelectorAll('.day-content').forEach(c => c.classList.remove('active'));
+      tab.classList.add('active');
+      panel.querySelector('#' + tab.dataset.day).classList.add('active');
+    });
+  });
+
+  // Travel mode switching (Section 2)
+  document.querySelectorAll('.tm-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tm-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.travel-panel').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('mode-' + btn.dataset.mode).classList.add('active');
+    });
+  });
+
+  // Section 3 — Food Intelligence dual-axis switching
+  let activePhase = 'menstrual';
+  let activeVenue = 'all';
+
+  function showFoodPanel() {
+    document.querySelectorAll('.food-panel').forEach(p => p.classList.remove('active'));
+    // venue "all" shows the phase overview; specific venues show the venue panel (keyed by menstrual- prefix)
+    let id;
+    if (activeVenue === 'all') {
+      id = 'fp-' + activePhase + '-all';
+    } else {
+      id = 'fp-menstrual-' + activeVenue; // venue panels show all phases
+    }
+    const el = document.getElementById(id);
+    if (el) el.classList.add('active');
+  }
+
+  document.querySelectorAll('.food-phase-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.food-phase-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      activePhase = btn.dataset.fphase;
+      // if on a venue panel, phase selection resets to overview
+      if (activeVenue !== 'all') {
+        activeVenue = 'all';
+        document.querySelectorAll('.food-venue-btn').forEach(b => b.classList.remove('active'));
+        document.querySelector('.food-venue-btn[data-venue="all"]').classList.add('active');
+      }
+      showFoodPanel();
+    });
+  });
+
+  // Section 4 — Health Condition toggles
+  const activeConditions = new Set(['pcos']);
+
+  function refreshConditionCards() {
+    const cards = document.querySelectorAll('.hc-card[data-card]');
+    const empty = document.getElementById('hc-empty');
+    let anyVisible = false;
+
+    cards.forEach(card => {
+      const cond = card.dataset.card;
+      if (activeConditions.has(cond)) {
+        card.style.display = 'block';
+        anyVisible = true;
+      } else {
+        card.style.display = 'none';
+      }
+    });
+
+    empty.style.display = anyVisible ? 'none' : 'block';
+  }
+
+  document.querySelectorAll('.cond-toggle').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const cond = btn.dataset.cond;
+      if (activeConditions.has(cond)) {
+        activeConditions.delete(cond);
+        btn.classList.remove('active');
+      } else {
+        activeConditions.add(cond);
+        btn.classList.add('active');
+      }
+      refreshConditionCards();
+    });
+  });
+
+/* food venue btn handler */
+  document.querySelectorAll('.food-venue-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.food-venue-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      activeVenue = btn.dataset.venue;
+      showFoodPanel();
+    });
+  });
+
+</script>
+
+<!-- SECTION 5: SMART TRAVEL TOOLS -->
+<div class="section-page" id="s5">
+  <div class="tools-page">
+
+    <div class="tools-tabs">
+      <button class="tool-tab-btn active" data-tool="kit">🎒 Kit Generator</button>
+      <button class="tool-tab-btn" data-tool="emergency">🆘 Emergency Mode</button>
+      <button class="tool-tab-btn" data-tool="redflag">🚩 Red Flag Guide</button>
+    </div>
+
+    <!-- ═══════════════════════════════════ -->
+    <!-- TOOL 1: KIT GENERATOR              -->
+    <!-- ═══════════════════════════════════ -->
+    <div class="tool-panel active" id="tool-kit">
+
+      <div class="kit-controls">
+        <div class="kit-control-card">
+          <label>Current Phase</label>
+          <select id="kit-phase">
+            <option value="menstrual">🔴 Menstrual (Days 1–5)</option>
+            <option value="follicular">🟠 Follicular (Days 6–13)</option>
+            <option value="ovulation">🟢 Ovulation (Days 14–16)</option>
+            <option value="luteal">🟣 Luteal (Days 17–28)</option>
+          </select>
+        </div>
+        <div class="kit-control-card">
+          <label>Travel Type</label>
+          <select id="kit-travel">
+            <option value="train">🚂 Long Train Journey</option>
+            <option value="bus">🚌 Bus Travel</option>
+            <option value="flight">✈️ Flight</option>
+            <option value="backpack">🎒 Backpacking</option>
+            <option value="hostel">🏠 Hostel Stay</option>
+          </select>
+        </div>
+        <div class="kit-control-card">
+          <label>Trip Duration</label>
+          <select id="kit-duration">
+            <option value="day">Day trip (under 12 hrs)</option>
+            <option value="short">Short trip (1–3 days)</option>
+            <option value="week">Week-long trip</option>
+            <option value="long">Extended travel (2+ weeks)</option>
+          </select>
+        </div>
+        <div class="kit-control-card">
+          <label>Health Conditions (optional)</label>
+          <div class="checkbox-group">
+            <label><input type="checkbox" class="kit-cond" value="pcos"> PCOS / PCOD</label>
+            <label><input type="checkbox" class="kit-cond" value="painful"> Painful periods</label>
+            <label><input type="checkbox" class="kit-cond" value="heavy"> Heavy bleeding</label>
+            <label><input type="checkbox" class="kit-cond" value="anemia"> Anemia / Low iron</label>
+          </div>
+        </div>
+      </div>
+
+      <button class="generate-btn" id="generate-kit-btn">⚡ Generate My Kit</button>
+
+      <div class="kit-output" id="kit-output">
+        <div class="kit-summary-bar">
+          <div class="summary-text">Your personalised travel kit · <strong id="kit-item-count">0 items</strong></div>
+          <button class="print-btn" onclick="window.print()">🖨 Print List</button>
+        </div>
+        <div id="kit-categories"></div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════ -->
+    <!-- TOOL 2: EMERGENCY MODE             -->
+    <!-- ═══════════════════════════════════ -->
+    <div class="tool-panel" id="tool-emergency">
+
+      <div class="emergency-grid">
+        <div class="emergency-card when">
+          <h3>🟡 When to Pause and Assess</h3>
+          <ul>
+            <li>Cramps severe enough to prevent walking or standing</li>
+            <li>Soaking through a pad or tampon every hour for 2+ hours</li>
+            <li>Feeling faint, dizzy, or lightheaded when standing</li>
+            <li>Nausea severe enough to prevent eating or drinking</li>
+            <li>Fever alongside period symptoms (unusual — take it seriously)</li>
+            <li>Pain that doesn't respond to your usual painkillers at correct dose</li>
+            <li>Bleeding that continues beyond 8–10 days without stopping</li>
+          </ul>
+        </div>
+
+        <div class="emergency-card steps">
+          <h3>🔵 Travel-Safe Response Steps</h3>
+          <ol class="steps-numbered">
+            <li><strong>Stop moving.</strong> Find a place to sit or lie down immediately.</li>
+            <li><strong>Eat and hydrate.</strong> Low blood sugar worsens all symptoms — eat something, sip water slowly.</li>
+            <li><strong>Take pain relief</strong> if you have it and haven't already reached your safe dose.</li>
+            <li><strong>Apply heat</strong> if available — a heat patch, warm water bottle, or even warm water compress.</li>
+            <li><strong>Tell someone nearby</strong> — a companion, hotel staff, or fellow traveller — that you need a moment.</li>
+            <li><strong>Give it 20–30 minutes.</strong> Most acute symptoms ease with rest, warmth, and food.</li>
+            <li><strong>If symptoms don't ease</strong> or worsen — seek medical help. Don't wait it out alone.</li>
+          </ol>
+        </div>
+
+        <div class="emergency-card warn">
+          <h3>🔴 Symptoms That Need Same-Day Medical Help</h3>
+          <ul>
+            <li>Soaking through products every 30 minutes or less</li>
+            <li>Passing clots larger than a 50-paise coin repeatedly</li>
+            <li>Fainting or nearly fainting — not just lightheadedness</li>
+            <li>Severe pain in one side of the lower abdomen (could indicate something other than period)</li>
+            <li>Fever above 38°C alongside pelvic pain</li>
+            <li>Difficulty breathing alongside heavy bleeding</li>
+            <li>Sudden change in flow pattern unlike anything you've experienced before</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="hotline-box">
+        <div class="icon">📞</div>
+        <div>
+          <h4>Emergency Numbers to Save Before You Travel</h4>
+          <p>Save these before you leave. Add the number of the nearest clinic at each destination once you arrive.</p>
+          <div class="numbers">
+            <span class="hotline-num">🇮🇳 India: 112</span>
+            <span class="hotline-num">🇬🇧 UK: 999 / 111</span>
+            <span class="hotline-num">🇺🇸 USA: 911</span>
+            <span class="hotline-num">🇪🇺 Europe: 112</span>
+            <span class="hotline-num">🇦🇺 Australia: 000</span>
+            <span class="hotline-num">🌍 Intl: +local 112</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:20px; background:#FEF9E7; border-radius:14px; padding:18px 22px; border-left:4px solid #F39C12;">
+        <p style="font-size:0.84rem; line-height:1.6; color:#555;"><strong style="color:#333">Travelling alone?</strong> Before every trip, share your itinerary with one trusted person who knows your cycle patterns. Set a daily check-in time. If you don't check in, they know to follow up. This is not paranoia — it's basic travel safety for anyone, amplified by the reality of travelling with a body that has monthly health variables.</p>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════ -->
+    <!-- TOOL 3: RED FLAG GUIDE             -->
+    <!-- ═══════════════════════════════════ -->
+    <div class="tool-panel" id="tool-redflag">
+
+      <div class="redflag-intro">
+        <div class="icon">💛</div>
+        <p>This guide helps you tell the difference between <strong>normal period discomfort</strong> and <strong>symptoms that warrant attention</strong>. Most period experiences, even difficult ones, are not emergencies. But some signals are worth taking seriously. You know your body — trust it.</p>
+      </div>
+
+      <div class="redflag-grid">
+
+        <div class="redflag-card flag-red">
+          <div class="redflag-card-top">
+            <span style="font-size:1.4rem">🩸</span>
+            <h3>Heavy or Unusual Bleeding</h3>
+          </div>
+          <ul>
+            <li><span class="flag-dot"></span>Soaking a full pad or tampon in under an hour, two hours running</li>
+            <li><span class="flag-dot"></span>Passing clots consistently larger than a 10-rupee coin</li>
+            <li><span class="flag-dot"></span>Bleeding that lasts longer than 10 days without slowing</li>
+            <li><span class="flag-dot"></span>Bleeding between periods that isn't light spotting</li>
+            <li><span class="flag-dot"></span>Post-sex bleeding that recurs</li>
+            <li><span class="flag-dot"></span><em style="color:#aaa">Normal: heavier Day 1–2, lighter after that</em></li>
+          </ul>
+        </div>
+
+        <div class="redflag-card flag-orange">
+          <div class="redflag-card-top">
+            <span style="font-size:1.4rem">😵</span>
+            <h3>Dizziness & Fatigue</h3>
+          </div>
+          <ul>
+            <li><span class="flag-dot"></span>Fainting or blacking out — even briefly</li>
+            <li><span class="flag-dot"></span>Dizziness severe enough to prevent standing safely</li>
+            <li><span class="flag-dot"></span>Heart racing or pounding during your period</li>
+            <li><span class="flag-dot"></span>Extreme breathlessness with normal activity during period</li>
+            <li><span class="flag-dot"></span>Persistent fatigue that doesn't ease after rest and eating</li>
+            <li><span class="flag-dot"></span><em style="color:#aaa">Normal: tiredness on Days 1–2, improved by Day 3</em></li>
+          </ul>
+        </div>
+
+        <div class="redflag-card flag-blue">
+          <div class="redflag-card-top">
+            <span style="font-size:1.4rem">🌡️</span>
+            <h3>Pain Patterns</h3>
+          </div>
+          <ul>
+            <li><span class="flag-dot"></span>Pain that doesn't respond to standard painkillers at the correct dose</li>
+            <li><span class="flag-dot"></span>Sharp pain on one side only (not general cramping)</li>
+            <li><span class="flag-dot"></span>Pain that radiates to the shoulder or back without obvious cause</li>
+            <li><span class="flag-dot"></span>Pain during sex that gets worse over time</li>
+            <li><span class="flag-dot"></span>Pelvic pain that persists throughout the cycle, not just during period</li>
+            <li><span class="flag-dot"></span><em style="color:#aaa">Normal: cramping Days 1–2, easing by Day 3–4</em></li>
+          </ul>
+        </div>
+
+        <div class="redflag-card flag-purple">
+          <div class="redflag-card-top">
+            <span style="font-size:1.4rem">📅</span>
+            <h3>Cycle Abnormalities</h3>
+          </div>
+          <ul>
+            <li><span class="flag-dot"></span>No period for 3+ months without pregnancy or known cause</li>
+            <li><span class="flag-dot"></span>Cycle consistently shorter than 21 days or longer than 35</li>
+            <li><span class="flag-dot"></span>Sudden dramatic change in cycle length or flow volume</li>
+            <li><span class="flag-dot"></span>Periods that were regular and suddenly become very irregular</li>
+            <li><span class="flag-dot"></span>Spotting in the luteal phase that recurs every cycle</li>
+            <li><span class="flag-dot"></span><em style="color:#aaa">Normal: slight variation month-to-month (1–5 days)</em></li>
+          </ul>
+        </div>
+
+        <div class="redflag-card flag-green">
+          <div class="redflag-card-top">
+            <span style="font-size:1.4rem">🌡️</span>
+            <h3>Other Warning Signs</h3>
+          </div>
+          <ul>
+            <li><span class="flag-dot"></span>Fever (38°C+) alongside pelvic pain or unusual discharge</li>
+            <li><span class="flag-dot"></span>Unusual discharge colour, smell, or texture alongside pain</li>
+            <li><span class="flag-dot"></span>Sudden swelling or bloating that doesn't ease after your period ends</li>
+            <li><span class="flag-dot"></span>Unexplained weight changes alongside cycle disruption</li>
+            <li><span class="flag-dot"></span>Hair loss or excessive facial hair appearing alongside irregular cycles</li>
+            <li><span class="flag-dot"></span><em style="color:#aaa">Normal: mild bloating in luteal, resolves with period</em></li>
+          </ul>
+        </div>
+
+        <div class="redflag-card" style="border-top: 3px solid #2C2C2C;">
+          <div class="redflag-card-top" style="background:#f5f5f5;">
+            <span style="font-size:1.4rem">✅</span>
+            <h3>What IS Normal</h3>
+          </div>
+          <ul>
+            <li><span class="flag-dot" style="background:#27AE60"></span>Cramping on Days 1–2, fading by Day 3</li>
+            <li><span class="flag-dot" style="background:#27AE60"></span>Heavier flow on Days 1–2, lighter by Day 4–5</li>
+            <li><span class="flag-dot" style="background:#27AE60"></span>Fatigue, mood changes, mild breast tenderness in luteal</li>
+            <li><span class="flag-dot" style="background:#27AE60"></span>Small clots (smaller than 10-rupee coin) occasionally</li>
+            <li><span class="flag-dot" style="background:#27AE60"></span>Cycle varying 1–5 days month to month</li>
+            <li><span class="flag-dot" style="background:#27AE60"></span>Bloating and appetite changes in the week before period</li>
+          </ul>
+        </div>
+
+      </div>
+
+      <div class="redflag-action">
+        <h4>If You See a Red Flag While Travelling — Here's Your Plan</h4>
+        <div class="action-row">
+          <div class="action-chip"><strong>Step 1 — Don't dismiss it</strong>If something feels different from your usual pattern, that's information. Trust your body's signals.</div>
+          <div class="action-chip"><strong>Step 2 — Stabilise first</strong>Sit, eat, hydrate. Take stock of all your symptoms calmly before deciding next steps.</div>
+          <div class="action-chip"><strong>Step 3 — Find a clinic</strong>Search "gynaecologist near me" or go to the nearest hospital's outpatient department. You don't need a referral for walk-in.</div>
+          <div class="action-chip"><strong>Step 4 — Communicate clearly</strong>Tell the doctor: your cycle day, what's unusual, how long it's been happening. Be specific.</div>
+          <div class="action-chip"><strong>Step 5 — Have insurance ready</strong>Travel health insurance should cover gynaecological emergencies. Know your policy number and helpline before you leave.</div>
+          <div class="action-chip"><strong>Step 6 — Follow up at home</strong>Even if the acute issue resolves, book a follow-up with your regular doctor when you're back.</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div><!-- /s5 -->
+
+<script>
+  // ── Section 5: Tool tab switching ──
+  document.querySelectorAll('.tool-tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tool-tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tool-panel').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('tool-' + btn.dataset.tool).classList.add('active');
+    });
+  });
+
+  // ── Kit Generator Data ──
+  const kitData = {
+    hygiene: {
+      label: '🧴 Hygiene & Products',
+      base: ['Pads — regular absorbency','Pads — heavy night absorbency','Spare underwear (dark coloured)','Biodegradable wet wipes (unscented)','Small zip-lock bags for disposal','Hand sanitiser','Compact mirror for bathroom checks'],
+      byPhase: {
+        menstrual:  ['Period underwear (1–2 pairs)','Menstrual cup or disc as backup','Miniature unscented deodorant'],
+        follicular: ['Light panty liners (spotting may occur)'],
+        ovulation:  ['Light panty liners','Intimate wash (travel size, pH-balanced)'],
+        luteal:     ['Period underwear (liner)','Panty liners for PMS spotting days'],
+      },
+      byTravel: {
+        flight:   ['Menstrual cup or disc — fewer changes at altitude','Compression socks (reduces DVT risk during bleeding)'],
+        backpack:  ['Milton tablets for cup sterilisation','Quick-dry period underwear (2 pairs)'],
+        hostel:    ['Wrist clip pouch for bathroom runs','Mini padlock for locker storage'],
+        train:     ['Extra supply bag clipped inside main bag'],
+        bus:       ['Highest-capacity product for boarding'],
+      },
+      byCondition: {
+        heavy:   ['High-capacity menstrual disc','Extra 50% supplies beyond your calculation'],
+        painful: ['Extra product set near top of bag for quick access'],
+      }
+    },
+    pain: {
+      label: '💊 Pain & Comfort Support',
+      base: ['Ibuprofen or mefenamic acid (for cramps)','Paracetamol as backup','Stick-on heat patch (ThermaCare/Moov)','Small portable heat pack','Peppermint oil (for nausea)','Ginger chews or ginger candy'],
+      byPhase: {
+        menstrual:  ['Double dose of heat patches for Days 1–2','Anti-nausea tablets if cramps cause nausea'],
+        follicular: [],
+        ovulation:  ['Mild painkiller for Mittelschmerz (mid-cycle cramps)'],
+        luteal:     ['Magnesium supplement for PMS cramp prevention','Anti-bloating remedy (simethicone or jeera water)'],
+      },
+      byTravel: {
+        flight:   ['Melatonin (0.5–1mg) for jet lag cycle disruption'],
+        backpack:  ['Portable TENS device','Electrolyte sachets'],
+        hostel:    ['Reusable heat pack (microwave in hostel kitchen)'],
+        train:     ['Extra heat patch — apply before boarding'],
+        bus:       ['Travel sickness tablets (motion + cramps cause nausea)'],
+      },
+      byCondition: {
+        painful: ['TENS device (portable)','Castor oil pack cloth for pre-period use'],
+        pcos:    ['Magnesium glycinate supplement'],
+        anemia:  ['Iron supplement','Vitamin C tablet to boost iron absorption'],
+      }
+    },
+    nutrition: {
+      label: '🥜 Nutrition & Snacks',
+      base: ['Peanut butter sachet or small jar','Mixed nuts packet','Banana or dried banana chips','Jaggery block or chikki','Oat or granola bar (low sugar)','Electrolyte sachets or ORS powder','Instant oat sachets'],
+      byPhase: {
+        menstrual:  ['Iron-rich snack: sesame laddoo or peanut chikki','Herbal tea bags (ginger, chamomile)','Dark chocolate 70%+ (small bar)'],
+        follicular: ['Protein bar or nut bar','Flaxseed sachet'],
+        ovulation:  ['Vitamin C snack: amla candy or fruit bar','Pumpkin seed packet'],
+        luteal:     ['Dark chocolate 70%+ (magnesium + mood)','Complex carb snack: oat bar or rice crackers','Magnesium-rich trail mix'],
+      },
+      byTravel: {
+        flight:   ['Still water (avoid fizzy drinks — altitude bloating is worse)','Non-salty snacks — sodium worsens in-flight bloating'],
+        backpack:  ['Canned tuna or sardines (trail protein)','Instant miso soup sachets'],
+        hostel:    ['Small peanut butter jar (lasts the trip)','Grocery list saved offline on phone'],
+        train:     ['Snacks accessible from top of bag — not buried'],
+        bus:       ['Easy-open snacks for a moving vehicle'],
+      },
+      byCondition: {
+        anemia:  ['Moringa powder sachet (stir into food)','Sesame laddoo or til chikki'],
+        pcos:    ['Low-GI snacks only: nuts, seeds — no sugary bars','Spearmint tea bags','Cinnamon sachet for tea'],
+        heavy:   ['Extra protein snacks for blood loss recovery','Coconut water sachets or powder'],
+      }
+    },
+    emergency: {
+      label: '🆘 Emergency Backups',
+      base: ['Emergency contact written on paper (not just phone)','Travel health insurance card + policy number','Key document photocopies in a separate bag','Basic first aid kit (plasters, antiseptic)','Local emergency number saved offline','Portable battery pack (phone charged)'],
+      byPhase: {
+        menstrual:  ['Full extra day\'s period supplies beyond your estimate','Painkiller name in local language if travelling abroad'],
+        follicular: [],
+        ovulation:  [],
+        luteal:     ['Comfort item (earphones, journal, snack) for PMS mood dips','Extra snacks for late-luteal cravings'],
+      },
+      byTravel: {
+        flight:   ['All period supplies in carry-on — never in checked luggage','Travel insurance emergency helpline saved offline'],
+        backpack:  ['Nearest clinic at every destination noted','3 extra days of supplies beyond trip length'],
+        hostel:    ['Padlock for locker','Nearest 24-hour pharmacy noted'],
+        train:     ['Destination address saved offline','Platform bathroom locations researched in advance'],
+        bus:       ['Scheduled stop times written down','Small change for paid public toilets'],
+      },
+      byCondition: {
+        anemia:  ['Medical alert note: iron deficiency','Doctor contact saved offline'],
+        painful: ['Doctor\'s letter if carrying prescription pain medication internationally'],
+        heavy:   ['Red flag symptom list saved offline (when to go to hospital)'],
+        pcos:    ['Recent symptom log with cycle data — useful if you need a doctor abroad'],
+      }
+    }
+  };
+
+  document.getElementById('generate-kit-btn').addEventListener('click', () => {
+    const phase    = document.getElementById('kit-phase').value;
+    const travel   = document.getElementById('kit-travel').value;
+    const duration = document.getElementById('kit-duration').value;
+    const conds    = [...document.querySelectorAll('.kit-cond:checked')].map(c => c.value);
+
+    const output  = document.getElementById('kit-output');
+    const catArea = document.getElementById('kit-categories');
+    catArea.innerHTML = '';
+    let totalCount = 0;
+
+    const durationNote = { day: '', short: '', week: ' · double all quantities', long: ' · triple quantities or plan resupply' }[duration];
+
+    Object.entries(kitData).forEach(([key, cat]) => {
+      const items = new Set(cat.base);
+      (cat.byPhase[phase]   || []).forEach(i => items.add(i));
+      (cat.byTravel[travel]  || []).forEach(i => items.add(i));
+      conds.forEach(c => (cat.byCondition[c] || []).forEach(i => items.add(i)));
+
+      totalCount += items.size;
+
+      const block = document.createElement('div');
+      block.className = 'kit-category';
+      block.innerHTML = `
+        <div class="kit-category-header">
+          <h3>${cat.label}<span style="font-size:0.72rem;font-weight:400;color:#aaa;margin-left:8px">${durationNote}</span></h3>
+          <span class="kit-count">${items.size} items</span>
+        </div>
+        <div class="kit-items" id="kit-items-${key}"></div>`;
+      catArea.appendChild(block);
+
+      const itemArea = block.querySelector('#kit-items-' + key);
+      items.forEach(item => {
+        const el = document.createElement('label');
+        el.className = 'kit-item';
+        el.innerHTML = `<input type="checkbox"> <span>${item}</span>`;
+        el.querySelector('input').addEventListener('change', function() {
+          el.classList.toggle('checked', this.checked);
+        });
+        itemArea.appendChild(el);
+      });
+    });
+
+    document.getElementById('kit-item-count').textContent = totalCount + ' items';
+    output.classList.add('visible');
+    output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+</script>
+
+</body>
+</html>
