@@ -5,7 +5,7 @@
 * **Team Members:**
   * Member 1: Malavika.P - St.Joseph's College(Autonomous) Devagiri
   * Member 2: Likitha A S-  St.Joseph's College(Autonomous) Devagiri
-* **Hosted Project Link:**
+* **Hosted Project Link:**https://cyclecare-dun.vercel.app
 
 ## Project Description
 CycleWise is an intelligent, emotionally-aware menstrual cycle tracker and travel survival guide. It moves beyond traditional clinical tracking to provide actionable, phase-specific insights for travel readiness, food intelligence, and emergency preparedness.
@@ -50,10 +50,10 @@ cd cyclecare
 Simply open the main file in any modern web browser:
 ```bash
 # On Windows
-start "cycle-tracker (7).html" 
+start "index.html" 
 
 # On Mac
-open "cycle-tracker (7).html"
+open "index.html"
 ```
 *(Tip: You may want to rename `cycle-tracker (7).html` to `index.html` for easier hosting!)*
 
@@ -61,17 +61,13 @@ open "cycle-tracker (7).html"
 ### For Software:
 
 **Screenshots**
-*(Replace these links with actual images from your project)*
 
-![Screenshot1](https://via.placeholder.com/800x400?text=CycleWise+Dashboard) 
+(https://drive.google.com/file/d/1r8FQUk7Z1ePRtvDZ_OXyr0gbqll5soOS/view?usp=drive_link) 
 *Caption: The main mobile-first dashboard showing Live Cycle Status and Travel Readiness.*
 
-![Screenshot2](https://via.placeholder.com/800x400?text=Smart+Kit+Generator) 
-*Caption: The Smart Kit Generator automatically building a packing list for a train journey during the Luteal phase.*
+https://drive.google.com/file/d/1_nK6D4ig-TlgLIJuzTL-AGZEhWP5Dj7P/view?usp=drive_link
 
-![Screenshot3](https://via.placeholder.com/800x400?text=Food+Intelligence) 
-*Caption: Venue-aware Food Intelligence advising what to eat at a railway station based on current hormonal phase.*
-
+https://drive.google.com/file/d/1R1CQljF3c0r6HV2-nZPtrnZtujC450Sy/view?usp=drive_link
 ## Diagrams
 ### System Architecture:
 Because CycleWise is a highly portable client-side application designed to be instantly accessible even with poor internet connectivity, the architecture currently consists of a unified structure where HTML, CSS, and Vanilla JavaScript execute entirely within the DOM. 
