@@ -1,11 +1,11 @@
 <h1 align="center">CycleWise (CycleCare) 🎯</h1>
 
 ## Basic Details
-* **Team Name:** [Add your Team Name here]
+* **Team Name:FAAAAHHHH
 * **Team Members:**
-  * Member 1: [Name] - [College]
-  * Member 2: [Name] - [College]
-* **Hosted Project Link:** [Add your GitHub Pages or Vercel link here]
+  * Member 1: Malavika.P - St.Joseph's College(Autonomous) Devagiri
+  * Member 2: Likitha A S-  St.Joseph's College(Autonomous) Devagiri
+* **Hosted Project Link:**
 
 ## Project Description
 CycleWise is an intelligent, emotionally-aware menstrual cycle tracker and travel survival guide. It moves beyond traditional clinical tracking to provide actionable, phase-specific insights for travel readiness, food intelligence, and emergency preparedness.
